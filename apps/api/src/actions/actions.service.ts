@@ -46,6 +46,24 @@ export class ActionsService {
       throw new BadRequestException('Una o más redes seleccionadas no son válidas.');
     }
 
+    const uniqueGroupIds = [...new Set(dto.teachingGroupIds ?? [])];
+    const groups = uniqueGroupIds.length
+      ? await this.prisma.teachingGroup.findMany({
+          where: {
+            id: { in: uniqueGroupIds },
+            academicYearId: user.academicYearId,
+            active: true,
+          },
+          select: { id: true, studentCount: true },
+        })
+      : [];
+
+    if (groups.length !== uniqueGroupIds.length) {
+      throw new BadRequestException('Uno o más grupos no pertenecen al curso activo.');
+    }
+
+    const inferredStudentCount = groups.reduce((sum, group) => sum + (group.studentCount ?? 0), 0);
+
     return this.prisma.action.create({
       data: {
         title: dto.title.trim(),
@@ -53,14 +71,18 @@ export class ActionsService {
         type: dto.type,
         activityDate: new Date(dto.activityDate),
         durationMinutes: dto.durationMinutes,
-        studentCount: dto.studentCount,
+        studentCount: dto.studentCount ?? (groups.length ? inferredStudentCount : undefined),
         submittedById: user.id,
         submittedByName: `${user.firstName} ${user.lastName}`.trim(),
         submittedByEmail: user.email,
         academicYearId: user.academicYearId,
         networks: { create: uniqueNetworkIds.map((networkId) => ({ networkId })) },
+        groups: { create: uniqueGroupIds.map((teachingGroupId) => ({ teachingGroupId })) },
       },
-      include: { networks: { include: { network: true } } },
+      include: {
+        networks: { include: { network: true } },
+        groups: { include: { teachingGroup: { include: { professionalFamily: true } } } },
+      },
     });
   }
 
@@ -70,7 +92,11 @@ export class ActionsService {
         submittedById: user.id,
         ...(user.academicYearId ? { academicYearId: user.academicYearId } : {}),
       },
-      include: { networks: { include: { network: true } }, evidence: true },
+      include: {
+        networks: { include: { network: true } },
+        groups: { include: { teachingGroup: { include: { professionalFamily: true } } } },
+        evidence: true,
+      },
       orderBy: { createdAt: 'desc' },
       take: 100,
     });
@@ -93,6 +119,7 @@ export class ActionsService {
       },
       include: {
         networks: { include: { network: true } },
+        groups: { include: { teachingGroup: { include: { professionalFamily: true } } } },
         evidence: true,
         submittedBy: { select: { firstName: true, lastName: true, email: true } },
       },
