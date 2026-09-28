@@ -78,6 +78,11 @@ export default function MyActionsPage() {
                 </div>
               )}
             </div>
+            {action.status === 'RETURNED' && (
+              <div className="queueActions">
+                <a className="primaryButton" href={`/actuaciones/${action.id}/corregir`}>Corregir y reenviar</a>
+              </div>
+            )}
           </article>
         ))}
         {!actions.length && !error && <div className="panel"><h2>Aún no has registrado actuaciones</h2></div>}
