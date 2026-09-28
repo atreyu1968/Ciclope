@@ -69,6 +69,27 @@ export class MailOutboxService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  async enqueueDirect(
+    subject: string,
+    textBody: string,
+    recipients: Recipient[],
+  ) {
+    const uniqueRecipients = [...new Map(recipients.map((recipient) => [recipient.id, recipient])).values()];
+    if (!uniqueRecipients.length) return { queued: 0 };
+
+    await this.prisma.emailOutbox.createMany({
+      data: uniqueRecipients.map((recipient) => ({
+        userId: recipient.id,
+        recipientEmail: recipient.email,
+        subject,
+        textBody,
+      })),
+    });
+
+    if (this.transporter) void this.processBatch();
+    return { queued: uniqueRecipients.length };
+  }
+
   async enqueueCommunication(
     communicationId: string,
     title: string,
