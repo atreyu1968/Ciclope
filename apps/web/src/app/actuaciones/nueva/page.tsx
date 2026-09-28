@@ -12,14 +12,22 @@ type Group = {
   studentCount?: number | null;
   professionalFamily: { id: string; name: string };
 };
+type Objective = {
+  id: string;
+  title: string;
+  description?: string | null;
+  plan: { networkId: string; network: { id: string; name: string } };
+};
 
 export default function NewActionPage() {
   const router = useRouter();
   const [networks, setNetworks] = useState<Network[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
+  const [objectives, setObjectives] = useState<Objective[]>([]);
   const [me, setMe] = useState<Me | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
+  const [selectedObjectives, setSelectedObjectives] = useState<string[]>([]);
   const [state, setState] = useState<'loading'|'idle'|'sending'|'sent'|'error'>('loading');
   const [createdActionId, setCreatedActionId] = useState<string | null>(null);
 
@@ -28,18 +36,25 @@ export default function NewActionPage() {
       fetch('/api/auth/me'),
       fetch('/api/networks'),
       fetch('/api/structure/groups'),
-    ]).then(async ([meResponse, networksResponse, groupsResponse]) => {
+      fetch('/api/plans/available-objectives'),
+    ]).then(async ([meResponse, networksResponse, groupsResponse, objectivesResponse]) => {
       if (meResponse.status === 401) {
         router.push('/login');
         return;
       }
-      if (!meResponse.ok || !networksResponse.ok || !groupsResponse.ok) throw new Error();
+      if (!meResponse.ok || !networksResponse.ok || !groupsResponse.ok || !objectivesResponse.ok) throw new Error();
       setMe(await meResponse.json());
       setNetworks(await networksResponse.json());
       setGroups(await groupsResponse.json());
+      setObjectives(await objectivesResponse.json());
       setState('idle');
     }).catch(() => setState('error'));
   }, [router]);
+
+  const visibleObjectives = useMemo(
+    () => objectives.filter((objective) => selected.includes(objective.plan.networkId)),
+    [objectives, selected],
+  );
 
   const inferredStudents = useMemo(() => groups
     .filter((group) => selectedGroups.includes(group.id))
@@ -63,6 +78,9 @@ export default function NewActionPage() {
         studentCount: manualStudents,
         networkIds: selected,
         teachingGroupIds: selectedGroups,
+        objectiveIds: selectedObjectives.filter((id) =>
+          objectives.some((objective) => objective.id === id && selected.includes(objective.plan.networkId)),
+        ),
       }),
     });
     if (response.ok) {
@@ -81,6 +99,10 @@ export default function NewActionPage() {
 
   function toggleGroup(id: string) {
     setSelectedGroups((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+  }
+
+  function toggleObjective(id: string) {
+    setSelectedObjectives((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
   }
 
   if (state === 'loading') return <main className="formShell"><p>Cargando…</p></main>;
@@ -105,7 +127,7 @@ export default function NewActionPage() {
           <p>Ha quedado registrada y pendiente de validación por la coordinación correspondiente.</p>
           <div className="rowActions">
             {createdActionId && <a className="primaryButton" href={`/actuaciones/${createdActionId}/evidencias`}>Añadir evidencias</a>}
-            <button className="secondaryButton" onClick={() => { setState('idle'); setSelected([]); setSelectedGroups([]); setCreatedActionId(null); }}>Registrar otra</button>
+            <button className="secondaryButton" onClick={() => { setState('idle'); setSelected([]); setSelectedGroups([]); setSelectedObjectives([]); setCreatedActionId(null); }}>Registrar otra</button>
           </div>
         </div>
       ) : (
@@ -167,6 +189,30 @@ export default function NewActionPage() {
               ))}
             </div>
           </fieldset>
+
+          {selected.length > 0 && (
+            <fieldset>
+              <legend>4. Objetivos del plan anual</legend>
+              {visibleObjectives.length ? (
+                <>
+                  <p className="hint">Opcional. Marca los objetivos a los que contribuye esta actuación. El progreso del plan se actualizará cuando coordinación la valide.</p>
+                  <div className="groupChecks">
+                    {visibleObjectives.map((objective) => (
+                      <label className="checkCard" key={objective.id}>
+                        <input type="checkbox" checked={selectedObjectives.includes(objective.id)} onChange={() => toggleObjective(objective.id)} />
+                        <span>
+                          <strong>{objective.title}</strong>
+                          <small>{objective.plan.network.name}{objective.description ? ` · ${objective.description}` : ''}</small>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <p className="hint">No hay objetivos activos del plan anual para las redes seleccionadas.</p>
+              )}
+            </fieldset>
+          )}
 
           {state === 'error' && <p className="errorBox">No se pudo registrar la actuación. Revisa los datos o vuelve a iniciar sesión.</p>}
           <button className="primaryButton" disabled={state === 'sending' || selected.length === 0}>
