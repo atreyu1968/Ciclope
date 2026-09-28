@@ -7,6 +7,7 @@ import type { AuthenticatedUser } from '../auth/auth.types';
 import { ActionsService } from './actions.service';
 import { CreateActionDto } from './dto/create-action.dto';
 import { ReturnActionDto } from './dto/return-action.dto';
+import { ResubmitActionDto } from './dto/resubmit-action.dto';
 import { ValidateActionsDto } from './dto/validate-actions.dto';
 
 const COORDINATION_ROLES = [
@@ -35,6 +36,11 @@ export class ActionsController {
     return this.actions.findMine(user);
   }
 
+  @Get(':id')
+  mineOne(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.actions.findMineOne(id, user);
+  }
+
   @Get()
   @Roles(...COORDINATION_ROLES)
   findAll(
@@ -48,6 +54,15 @@ export class ActionsController {
   @Roles(...COORDINATION_ROLES)
   validateBatch(@Body() dto: ValidateActionsDto, @CurrentUser() user: AuthenticatedUser) {
     return this.actions.validateBatch(dto.ids, user);
+  }
+
+  @Patch(':id/resubmit')
+  resubmit(
+    @Param('id') id: string,
+    @Body() dto: ResubmitActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.actions.resubmit(id, dto, user);
   }
 
   @Patch(':id/validate')
