@@ -71,6 +71,8 @@ export default function FacultyAdminPage() {
           <p className="lead">Una única cuenta por docente. Las coordinaciones se añaden después por curso académico y pueden ser múltiples.</p>
         </div>
         <div className="rowActions">
+          <a className="secondaryButton" href="/admin/profesorado/importar">Importar CSV</a>
+          <a className="secondaryButton" href="/admin/estructura">Familias y grupos</a>
           <a className="secondaryButton" href="/admin/cursos">Cursos y coordinaciones</a>
           <a className="secondaryButton" href="/">Volver</a>
         </div>
