@@ -23,13 +23,15 @@ export default function NewCommunicationPage() {
   const [afternoon, setAfternoon] = useState(false);
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [smtpConfigured, setSmtpConfigured] = useState<boolean | null>(null);
 
   useEffect(() => {
     Promise.all([
       fetch('/api/auth/me'),
       fetch('/api/networks'),
       fetch('/api/structure/families'),
-    ]).then(async ([meResponse, networksResponse, familiesResponse]) => {
+      fetch('/api/communications/mail-status'),
+    ]).then(async ([meResponse, networksResponse, familiesResponse, mailResponse]) => {
       if (meResponse.status === 401) {
         router.push('/login');
         return;
@@ -37,6 +39,10 @@ export default function NewCommunicationPage() {
       setMe(await meResponse.json());
       setNetworks(await networksResponse.json());
       setFamilies(await familiesResponse.json());
+      if (mailResponse.ok) {
+        const mail = await mailResponse.json();
+        setSmtpConfigured(Boolean(mail.configured));
+      }
     }).catch(() => setMessage('No se pudieron cargar los datos.'));
   }, [router]);
 
@@ -101,6 +107,11 @@ export default function NewCommunicationPage() {
       </div>
 
       {message && <div className="notice">{message}</div>}
+      {smtpConfigured === false && (
+        <div className="notice">
+          El correo SMTP todavía no está configurado. La comunicación se publicará en CÍCLOPE y quedará preparada en la cola de correo hasta configurar SMTP.
+        </div>
+      )}
 
       <form className="actionForm" onSubmit={submit}>
         <fieldset>
