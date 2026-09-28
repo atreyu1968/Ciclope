@@ -17,6 +17,7 @@ export default function SentCommunicationsPage() {
   const router = useRouter();
   const [items, setItems] = useState<SentCommunication[]>([]);
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
 
   useEffect(() => {
     fetch('/api/communications/sent').then(async (response) => {
@@ -32,6 +33,19 @@ export default function SentCommunicationsPage() {
     });
   }, [router]);
 
+  async function remindPending(id: string) {
+    setMessage('');
+    const response = await fetch(`/api/communications/${id}/remind-pending`, { method: 'POST' });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setMessage(body.message || 'No se pudo preparar el recordatorio.');
+      return;
+    }
+    setMessage(body.queued
+      ? `Recordatorio preparado para ${body.queued} personas pendientes.`
+      : body.message || 'No hay personas pendientes.');
+  }
+
   return (
     <main className="shell">
       <div className="pageHeader">
@@ -46,6 +60,7 @@ export default function SentCommunicationsPage() {
         </div>
       </div>
       {error && <div className="errorBox">{error}</div>}
+      {message && <div className="notice">{message}</div>}
       <div className="actionQueue">
         {items.map((item) => {
           const total = item._count.recipients;
@@ -63,8 +78,11 @@ export default function SentCommunicationsPage() {
                   <div><strong>{total}</strong><span>destinatarios</span></div>
                   <div><strong>{read}</strong><span>leídas</span></div>
                   <div><strong>{responded}</strong><span>respondidas</span></div>
-                  <div><strong>{Math.max(total - read, 0)}</strong><span>pendientes</span></div>
+                  <div><strong>{item.responseRequired ? Math.max(total - responded, 0) : Math.max(total - read, 0)}</strong><span>pendientes</span></div>
                 </div>
+              </div>
+              <div className="queueActions">
+                <button className="secondaryButton" onClick={() => remindPending(item.id)}>Recordar a pendientes</button>
               </div>
             </article>
           );
