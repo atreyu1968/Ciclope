@@ -258,13 +258,13 @@ export class StaffRequestsService {
       where: { id },
       data: {
         status,
-        resolvedAt: [StaffRequestStatus.RESOLVED, StaffRequestStatus.CLOSED].includes(status)
+        resolvedAt: (status === StaffRequestStatus.RESOLVED || status === StaffRequestStatus.CLOSED)
           ? request.resolvedAt ?? new Date()
           : null,
       },
     });
 
-    if ([StaffRequestStatus.RESOLVED, StaffRequestStatus.CLOSED].includes(status)) {
+    if (status === StaffRequestStatus.RESOLVED || status === StaffRequestStatus.CLOSED) {
       const link = this.requestLink(id);
       await this.mail.enqueueDirect(
         `[CÍCLOPE FP · Buzón] ${status === StaffRequestStatus.RESOLVED ? 'Consulta resuelta' : 'Consulta cerrada'}: ${request.subject}`,
