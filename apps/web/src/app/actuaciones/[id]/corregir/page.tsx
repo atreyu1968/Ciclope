@@ -10,6 +10,12 @@ type Group = {
   studentCount?: number | null;
   professionalFamily: { name: string };
 };
+type Objective = {
+  id: string;
+  title: string;
+  description?: string | null;
+  plan: { networkId: string; network: { id: string; name: string } };
+};
 type Action = {
   id: string;
   title: string;
@@ -22,6 +28,7 @@ type Action = {
   returnedReason?: string | null;
   networks: Array<{ network: Network }>;
   groups: Array<{ teachingGroup: Group }>;
+  objectives: Array<{ objective: { id: string; title: string; plan: { networkId: string; network: Network } } }>;
 };
 
 export default function CorrectActionPage() {
@@ -30,8 +37,10 @@ export default function CorrectActionPage() {
   const [action, setAction] = useState<Action | null>(null);
   const [networks, setNetworks] = useState<Network[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
+  const [objectives, setObjectives] = useState<Objective[]>([]);
   const [selectedNetworks, setSelectedNetworks] = useState<string[]>([]);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
+  const [selectedObjectives, setSelectedObjectives] = useState<string[]>([]);
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
 
@@ -40,12 +49,13 @@ export default function CorrectActionPage() {
       fetch(`/api/actions/${params.id}`),
       fetch('/api/networks'),
       fetch('/api/structure/groups'),
-    ]).then(async ([actionResponse, networksResponse, groupsResponse]) => {
+      fetch('/api/plans/available-objectives'),
+    ]).then(async ([actionResponse, networksResponse, groupsResponse, objectivesResponse]) => {
       if (actionResponse.status === 401) {
         router.push('/login');
         return;
       }
-      if (!actionResponse.ok || !networksResponse.ok || !groupsResponse.ok) {
+      if (!actionResponse.ok || !networksResponse.ok || !groupsResponse.ok || !objectivesResponse.ok) {
         setMessage('No se pudo cargar la actuación.');
         return;
       }
@@ -53,10 +63,17 @@ export default function CorrectActionPage() {
       setAction(loadedAction);
       setNetworks(await networksResponse.json());
       setGroups(await groupsResponse.json());
+      setObjectives(await objectivesResponse.json());
       setSelectedNetworks(loadedAction.networks.map((item) => item.network.id));
       setSelectedGroups(loadedAction.groups.map((item) => item.teachingGroup.id));
+      setSelectedObjectives(loadedAction.objectives.map((item) => item.objective.id));
     });
   }, [params.id, router]);
+
+  const visibleObjectives = useMemo(
+    () => objectives.filter((objective) => selectedNetworks.includes(objective.plan.networkId)),
+    [objectives, selectedNetworks],
+  );
 
   const inferredStudents = useMemo(() => groups
     .filter((group) => selectedGroups.includes(group.id))
@@ -79,6 +96,9 @@ export default function CorrectActionPage() {
         studentCount: Number(form.get('studentCount') || 0) || undefined,
         networkIds: selectedNetworks,
         teachingGroupIds: selectedGroups,
+        objectiveIds: selectedObjectives.filter((id) =>
+          objectives.some((objective) => objective.id === id && selectedNetworks.includes(objective.plan.networkId)),
+        ),
       }),
     });
     const body = await response.json().catch(() => ({}));
@@ -172,6 +192,28 @@ export default function CorrectActionPage() {
             ))}
           </div>
         </fieldset>
+
+        {selectedNetworks.length > 0 && (
+          <fieldset>
+            <legend>Objetivos del plan anual</legend>
+            {visibleObjectives.length ? (
+              <div className="groupChecks">
+                {visibleObjectives.map((objective) => (
+                  <label className="checkCard" key={objective.id}>
+                    <input
+                      type="checkbox"
+                      checked={selectedObjectives.includes(objective.id)}
+                      onChange={() => setSelectedObjectives((current) => current.includes(objective.id)
+                        ? current.filter((item) => item !== objective.id)
+                        : [...current, objective.id])}
+                    />
+                    <span><strong>{objective.title}</strong><small>{objective.plan.network.name}</small></span>
+                  </label>
+                ))}
+              </div>
+            ) : <p className="hint">No hay objetivos activos para las redes seleccionadas.</p>}
+          </fieldset>
+        )}
 
         <button className="primaryButton" disabled={sending || selectedNetworks.length === 0}>
           {sending ? 'Reenviando…' : 'Reenviar a coordinación'}
