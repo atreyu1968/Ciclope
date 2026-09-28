@@ -43,6 +43,13 @@ enum EmailOutboxStatus {
   FAILED
 }
 
+enum StaffRequestStatus {
+  NEW
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
 model Center {
   id                   String               @id @default(cuid())
   name                 String
@@ -64,6 +71,7 @@ model AcademicYear {
   center              Center                @relation(fields: [centerId], references: [id], onDelete: Cascade)
   actions             Action[]
   communications      Communication[]
+  staffRequests        StaffRequest[]
   groups              TeachingGroup[]
   networkCoordinators NetworkCoordinator[]
   ciclopeCoordinators CiclopeCoordinator[]
@@ -95,6 +103,8 @@ model User {
   authoredCommunications  Communication[]           @relation("CommunicationAuthor")
   communicationRecipients CommunicationRecipient[]
   emailJobs               EmailOutbox[]
+  submittedStaffRequests  StaffRequest[]            @relation("StaffRequestSubmitter")
+  requestMessages         StaffRequestMessage[]
   createdAt               DateTime                  @default(now())
   updatedAt               DateTime                  @updatedAt
 
@@ -186,6 +196,7 @@ model Network {
   actions        ActionNetwork[]
   coordinators   NetworkCoordinator[]
   communications Communication[]
+  staffRequests  StaffRequestNetwork[]
   createdAt      DateTime              @default(now())
   updatedAt      DateTime              @updatedAt
 }
@@ -347,4 +358,46 @@ model EmailOutbox {
   @@index([status, nextAttemptAt])
   @@index([communicationId])
   @@index([userId])
+}
+
+model StaffRequest {
+  id             String             @id @default(cuid())
+  academicYearId String
+  submittedById  String
+  category       String
+  subject        String
+  status         StaffRequestStatus @default(NEW)
+  resolvedAt     DateTime?
+  academicYear   AcademicYear       @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  submittedBy    User               @relation("StaffRequestSubmitter", fields: [submittedById], references: [id], onDelete: Restrict)
+  networks       StaffRequestNetwork[]
+  messages       StaffRequestMessage[]
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@index([academicYearId, status])
+  @@index([submittedById, academicYearId])
+}
+
+model StaffRequestNetwork {
+  requestId String
+  networkId String
+  request   StaffRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  network   Network      @relation(fields: [networkId], references: [id], onDelete: Cascade)
+
+  @@id([requestId, networkId])
+  @@index([networkId])
+}
+
+model StaffRequestMessage {
+  id        String       @id @default(cuid())
+  requestId String
+  authorId  String
+  body      String
+  request   StaffRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  author    User         @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  createdAt DateTime     @default(now())
+
+  @@index([requestId, createdAt])
+  @@index([authorId])
 }
