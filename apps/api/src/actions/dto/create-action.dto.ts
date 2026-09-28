@@ -27,4 +27,9 @@ export class CreateActionDto {
   @IsArray()
   @IsString({ each: true })
   teachingGroupIds?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  objectiveIds?: string[];
 }
