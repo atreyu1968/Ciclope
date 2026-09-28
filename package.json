@@ -1,1 +1,32 @@
-{"name":"ciclope-fp","version":"0.1.0","private":true,"workspaces":["apps/*","packages/*"],"engines":{"node":">=24.11.0"},"scripts":{"dev:web":"npm run dev --workspace @ciclope/web","dev:api":"npm run start:dev --workspace @ciclope/api","build":"npm run build --workspaces --if-present","db:generate":"npx prisma generate --config prisma7.config.ts","db:migrate":"npx prisma migrate deploy --config prisma7.config.ts","db:migrate:dev":"npx prisma migrate dev --config prisma7.config.ts","db:seed":"tsx packages/database/prisma/seed.ts"},"devDependencies":{"prisma":"7.10.0","tsx":"^4.20.0","typescript":"^5.9.0"}}
+{
+  "name": "ciclope-fp",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=24.11.0"
+  },
+  "scripts": {
+    "dev:web": "npm run dev --workspace @ciclope/web",
+    "dev:api": "npm run start:dev --workspace @ciclope/api",
+    "build": "npm run build --workspaces --if-present",
+    "db:generate": "npx prisma generate --config prisma7.config.ts",
+    "db:migrate": "npx prisma migrate deploy --config prisma7.config.ts",
+    "db:migrate:dev": "npx prisma migrate dev --config prisma7.config.ts",
+    "db:seed": "tsx packages/database/prisma/seed.ts"
+  },
+  "devDependencies": {
+    "prisma": "7.10.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  },
+  "allowScripts": {
+    "prisma@7.10.0": true,
+    "@prisma/engines@7.10.0": true,
+    "esbuild@0.28.2": true,
+    "argon2@0.44.0": true
+  }
+}
