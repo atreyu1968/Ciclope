@@ -134,6 +134,9 @@ export class CommunicationsService {
       },
       include: {
         originNetwork: true,
+        recipients: {
+          select: { userId: true, readAt: true, respondedAt: true },
+        },
         _count: { select: { recipients: true } },
       },
       orderBy: { createdAt: 'desc' },
