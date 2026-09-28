@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ActionStatus, CommunicationStatus } from '../generated/prisma/client';
+import { ActionStatus, CommunicationStatus, StaffRequestStatus } from '../generated/prisma/client';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { PrismaService } from '../database/prisma.service';
 
@@ -18,6 +18,7 @@ export class DashboardService {
         activeYear: null,
         coordinationNetworks: [],
         pendingActions: 0,
+        openStaffRequests: 0,
         returnedOwnActions: 0,
         unreadCommunications: 0,
         communicationFollowups: 0,
@@ -27,7 +28,20 @@ export class DashboardService {
     }
 
     const global = this.isGlobalCoordinator(user);
-    const [year, coordinationNetworks, pendingActions, pendingActionItems, returnedOwnActions, unreadCommunications, communications] = await Promise.all([
+    const coordinationNetworkFilter = !global
+      ? { networks: { some: { networkId: { in: user.coordinatorNetworkIds } } } }
+      : {};
+
+    const [
+      year,
+      coordinationNetworks,
+      pendingActions,
+      pendingActionItems,
+      openStaffRequests,
+      returnedOwnActions,
+      unreadCommunications,
+      communications,
+    ] = await Promise.all([
       this.prisma.academicYear.findUnique({
         where: { id: user.academicYearId },
         select: { id: true, name: true, startsAt: true, endsAt: true },
@@ -42,14 +56,14 @@ export class DashboardService {
         where: {
           academicYearId: user.academicYearId,
           status: ActionStatus.PENDING_VALIDATION,
-          ...(!global ? { networks: { some: { networkId: { in: user.coordinatorNetworkIds } } } } : {}),
+          ...coordinationNetworkFilter,
         },
       }),
       this.prisma.action.findMany({
         where: {
           academicYearId: user.academicYearId,
           status: ActionStatus.PENDING_VALIDATION,
-          ...(!global ? { networks: { some: { networkId: { in: user.coordinatorNetworkIds } } } } : {}),
+          ...coordinationNetworkFilter,
         },
         select: {
           id: true,
@@ -59,6 +73,13 @@ export class DashboardService {
         },
         orderBy: { createdAt: 'asc' },
         take: 5,
+      }),
+      this.prisma.staffRequest.count({
+        where: {
+          academicYearId: user.academicYearId,
+          status: { in: [StaffRequestStatus.NEW, StaffRequestStatus.IN_PROGRESS] },
+          ...coordinationNetworkFilter,
+        },
       }),
       this.prisma.action.count({
         where: {
@@ -108,11 +129,18 @@ export class DashboardService {
     const communicationFollowups = communicationItems.length;
     const rawMinutes =
       pendingActions * 1 +
+      openStaffRequests * 3 +
       communicationFollowups * 2 +
       returnedOwnActions * 2 +
       Math.min(unreadCommunications, 10);
 
     const focus = [
+      ...(openStaffRequests ? [{
+        key: 'staff-requests',
+        priority: 'high',
+        title: `${openStaffRequests} consultas o propuestas del claustro abiertas`,
+        href: '/coordinacion/buzon',
+      }] : []),
       ...(pendingActions ? [{
         key: 'pending-actions',
         priority: 'high',
@@ -144,6 +172,7 @@ export class DashboardService {
       coordinationNetworks,
       pendingActions,
       pendingActionItems,
+      openStaffRequests,
       returnedOwnActions,
       unreadCommunications,
       communicationFollowups,
