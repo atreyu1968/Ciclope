@@ -7,6 +7,7 @@ type DashboardData = {
   activeYear: { id: string; name: string } | null;
   coordinationNetworks: Array<{ id: string; name: string }>;
   pendingActions: number;
+  openStaffRequests: number;
   returnedOwnActions: number;
   unreadCommunications: number;
   communicationFollowups: number;
@@ -69,6 +70,7 @@ export default function CoordinationDashboardPage() {
 
       <section className="statsGrid">
         <article className="statCard"><strong>{data.pendingActions}</strong><span>actuaciones por validar</span></article>
+        <article className="statCard"><strong>{data.openStaffRequests}</strong><span>consultas del claustro abiertas</span></article>
         <article className="statCard"><strong>{data.communicationFollowups}</strong><span>comunicaciones con pendientes</span></article>
         <article className="statCard"><strong>{data.unreadCommunications}</strong><span>mensajes sin leer</span></article>
         <article className="statCard"><strong>{data.returnedOwnActions}</strong><span>actuaciones tuyas devueltas</span></article>
@@ -99,6 +101,7 @@ export default function CoordinationDashboardPage() {
       <section className="quickLinks">
         <a className="secondaryButton" href="/coordinacion/actuaciones">Actuaciones</a>
         <a className="secondaryButton" href="/coordinacion/comunicaciones">Comunicaciones enviadas</a>
+        <a className="secondaryButton" href="/coordinacion/buzon">Buzón del claustro</a>
         <a className="secondaryButton" href="/comunicaciones/nueva">Publicar comunicación</a>
         <a className="secondaryButton" href="/actuaciones/nueva">Registrar actuación</a>
         <a className="secondaryButton" href="/informes">Indicadores e informes</a>
