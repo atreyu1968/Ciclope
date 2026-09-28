@@ -33,35 +33,58 @@ model Center {
 }
 
 model AcademicYear {
-  id        String   @id @default(cuid())
-  centerId  String
-  name      String
-  startsAt  DateTime
-  endsAt    DateTime
-  isActive  Boolean  @default(false)
-  center    Center   @relation(fields: [centerId], references: [id], onDelete: Cascade)
-  actions   Action[]
-  createdAt DateTime @default(now())
+  id                  String                @id @default(cuid())
+  centerId            String
+  name                String
+  startsAt            DateTime
+  endsAt              DateTime
+  isActive            Boolean               @default(false)
+  closedAt            DateTime?
+  center              Center                @relation(fields: [centerId], references: [id], onDelete: Cascade)
+  actions             Action[]
+  communications      Communication[]
+  networkCoordinators NetworkCoordinator[]
+  ciclopeCoordinators CiclopeCoordinator[]
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
 
   @@unique([centerId, name])
   @@index([centerId, isActive])
 }
 
 model User {
-  id           String     @id @default(cuid())
-  centerId     String
-  email        String
-  firstName    String
-  lastName     String
-  passwordHash String?
-  active       Boolean    @default(true)
-  center       Center     @relation(fields: [centerId], references: [id], onDelete: Cascade)
-  roles        UserRole[]
-  evidence     Evidence[]
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  id                   String                @id @default(cuid())
+  centerId             String
+  email                String
+  firstName            String
+  lastName             String
+  passwordHash         String?
+  active               Boolean               @default(true)
+  center               Center                @relation(fields: [centerId], references: [id], onDelete: Cascade)
+  roles                UserRole[]
+  evidence             Evidence[]
+  sessions             Session[]
+  submittedActions     Action[]              @relation("SubmittedActions")
+  validatedActions     Action[]              @relation("ValidatedActions")
+  networkCoordinations NetworkCoordinator[]
+  ciclopeCoordinations CiclopeCoordinator[]
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
 
   @@unique([centerId, email])
+  @@index([email])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model Role {
@@ -82,15 +105,46 @@ model UserRole {
 }
 
 model Network {
-  id          String          @id @default(cuid())
-  code        NetworkCode     @unique
-  name        String
-  description String?
-  sortOrder   Int
-  active      Boolean         @default(true)
-  actions     ActionNetwork[]
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  id           String                @id @default(cuid())
+  code         NetworkCode           @unique
+  name         String
+  description  String?
+  sortOrder    Int
+  active       Boolean               @default(true)
+  actions      ActionNetwork[]
+  coordinators NetworkCoordinator[]
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+}
+
+model NetworkCoordinator {
+  id             String       @id @default(cuid())
+  academicYearId String
+  networkId      String
+  userId         String
+  isPrimary      Boolean      @default(true)
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  network        Network      @relation(fields: [networkId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+
+  @@unique([academicYearId, networkId, userId])
+  @@index([academicYearId, networkId])
+  @@index([userId, academicYearId])
+}
+
+model CiclopeCoordinator {
+  id             String       @id @default(cuid())
+  academicYearId String
+  userId         String
+  isPrimary      Boolean      @default(true)
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+
+  @@unique([academicYearId, userId])
+  @@index([academicYearId])
+  @@index([userId, academicYearId])
 }
 
 model Action {
@@ -103,10 +157,16 @@ model Action {
   activityDate     DateTime
   durationMinutes  Int?
   studentCount     Int?
+  submittedById    String?
   submittedByName  String
   submittedByEmail String
+  validatedById    String?
   validatedAt      DateTime?
+  returnedAt       DateTime?
+  returnedReason   String?
   academicYear     AcademicYear    @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  submittedBy      User?           @relation("SubmittedActions", fields: [submittedById], references: [id], onDelete: SetNull)
+  validatedBy      User?           @relation("ValidatedActions", fields: [validatedById], references: [id], onDelete: SetNull)
   networks         ActionNetwork[]
   evidence         Evidence[]
   createdAt        DateTime        @default(now())
@@ -115,6 +175,7 @@ model Action {
   @@index([academicYearId, status])
   @@index([activityDate])
   @@index([submittedByEmail])
+  @@index([submittedById])
 }
 
 model ActionNetwork {
@@ -145,11 +206,15 @@ model Evidence {
 }
 
 model Communication {
-  id               String   @id @default(cuid())
+  id               String       @id @default(cuid())
+  academicYearId   String
   title            String
   body             String
-  responseRequired Boolean  @default(false)
+  responseRequired Boolean      @default(false)
   deadline         DateTime?
   publishedAt      DateTime?
-  createdAt        DateTime @default(now())
+  academicYear     AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  createdAt        DateTime     @default(now())
+
+  @@index([academicYearId])
 }

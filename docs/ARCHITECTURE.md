@@ -8,6 +8,10 @@
 4. Los datos validados alimentarán indicadores, informes y memoria.
 5. El portal del profesorado debe poder utilizarse desde móvil en menos de 90 segundos por actuación ordinaria.
 6. La aplicación se despliega directamente en Ubuntu, sin Docker.
+7. Todas las operaciones de gestión pertenecen a un curso académico.
+8. Las coordinaciones se asignan por curso, nunca como atributos permanentes del usuario.
+9. Un mismo docente puede acumular dos o más coordinaciones simultáneamente en el mismo curso.
+10. El cambio de coordinador en un curso posterior no modifica el histórico anterior.
 
 ## Componentes
 
@@ -17,16 +21,13 @@
 - `deploy`: Nginx y systemd.
 - `scripts`: instalación y mantenimiento.
 
-## Redes iniciales
+## Coordinaciones
 
-Las cuatro redes se crean en el seed y están activas desde la V1:
-- Innovación.
-- Emprendimiento.
-- Información y Orientación Profesional.
-- Calidad.
+La tabla `NetworkCoordinator` relaciona `AcademicYear + Network + User`.
+No existe restricción de una única red por usuario. Por tanto, un docente puede ser responsable de Innovación y Calidad en el mismo curso, además de estar asignado a CÍCLOPE.
 
-## Primer flujo implementado
+Los permisos de coordinación se calculan en cada sesión a partir de las asignaciones del curso activo.
 
-Profesorado → formulario → PENDING_VALIDATION → coordinación → VALIDATED.
+## Flujo de actuación
 
-El siguiente bloque sustituirá los campos provisionales de identidad del formulario por autenticación y sesión, e incorporará bandeja de coordinación, devolución y validación masiva.
+Profesorado autenticado → actuación asociada al curso activo → PENDING_VALIDATION → bandeja de la coordinación correspondiente → VALIDATED o RETURNED.

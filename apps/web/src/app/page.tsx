@@ -10,12 +10,16 @@ export default function Home() {
     <main className="shell">
       <section className="hero">
         <div>
-          <p className="eyebrow">Panel del centro</p>
+          <p className="eyebrow">CÍCLOPE FP</p>
           <h1>Coordinación sencilla, información única.</h1>
           <p>El profesorado registra las actuaciones. Las coordinaciones validan y el sistema reutiliza los datos para evidencias, indicadores e informes.</p>
         </div>
-        <a className="primaryButton" href="/actuaciones/nueva">Registrar actuación</a>
+        <div className="rowActions">
+          <a className="secondaryButton" href="/login">Acceder</a>
+          <a className="primaryButton" href="/actuaciones/nueva">Registrar actuación</a>
+        </div>
       </section>
+
       <section>
         <div className="sectionHeading">
           <div><p className="eyebrow">Redes operativas</p><h2>Las cuatro redes desde el primer día</h2></div>
@@ -29,11 +33,12 @@ export default function Home() {
           ))}
         </div>
       </section>
+
       <section className="attention">
-        <div><p className="eyebrow">Principio</p><h2>Registrar una vez. Reutilizar siempre.</h2></div>
-        <div className="metric"><strong>1</strong><span>formulario para el profesorado</span></div>
-        <div className="metric"><strong>4</strong><span>redes conectadas</span></div>
-        <div className="metric"><strong>0</strong><span>transcripciones por coordinación</span></div>
+        <div><p className="eyebrow">Trabajo diario</p><h2>Accesos principales</h2></div>
+        <div className="metric"><strong>01</strong><a href="/actuaciones/nueva">Registrar actuación</a></div>
+        <div className="metric"><strong>02</strong><a href="/coordinacion/actuaciones">Bandeja coordinación</a></div>
+        <div className="metric"><strong>03</strong><a href="/admin/cursos">Cursos y coordinaciones</a></div>
       </section>
     </main>
   );

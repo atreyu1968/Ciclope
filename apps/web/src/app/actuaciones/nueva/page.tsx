@@ -1,37 +1,48 @@
 'use client';
 
 import { FormEvent, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+
 type Network = { id: string; name: string; code: string };
+type Me = { firstName: string; lastName: string; email: string; academicYearId?: string };
 
 export default function NewActionPage() {
+  const router = useRouter();
   const [networks, setNetworks] = useState<Network[]>([]);
+  const [me, setMe] = useState<Me | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
-  const [state, setState] = useState<'idle'|'sending'|'sent'|'error'>('idle');
+  const [state, setState] = useState<'loading'|'idle'|'sending'|'sent'|'error'>('loading');
 
   useEffect(() => {
-    fetch('/api/networks').then((r) => r.json()).then(setNetworks).catch(() => setNetworks([]));
-  }, []);
+    Promise.all([fetch('/api/auth/me'), fetch('/api/networks')]).then(async ([meResponse, networksResponse]) => {
+      if (meResponse.status === 401) {
+        router.push('/login');
+        return;
+      }
+      if (!meResponse.ok || !networksResponse.ok) throw new Error();
+      setMe(await meResponse.json());
+      setNetworks(await networksResponse.json());
+      setState('idle');
+    }).catch(() => setState('error'));
+  }, [router]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selected.length) return;
     setState('sending');
     const form = new FormData(event.currentTarget);
-    const payload = {
-      title: form.get('title'),
-      description: form.get('description'),
-      type: form.get('type'),
-      activityDate: form.get('activityDate'),
-      durationMinutes: Number(form.get('durationMinutes') || 0) || undefined,
-      studentCount: Number(form.get('studentCount') || 0) || undefined,
-      submittedByName: form.get('submittedByName'),
-      submittedByEmail: form.get('submittedByEmail'),
-      networkIds: selected,
-    };
     const response = await fetch('/api/actions', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        title: form.get('title'),
+        description: form.get('description'),
+        type: form.get('type'),
+        activityDate: form.get('activityDate'),
+        durationMinutes: Number(form.get('durationMinutes') || 0) || undefined,
+        studentCount: Number(form.get('studentCount') || 0) || undefined,
+        networkIds: selected,
+      }),
     });
     setState(response.ok ? 'sent' : 'error');
     if (response.ok) event.currentTarget.reset();
@@ -41,15 +52,22 @@ export default function NewActionPage() {
     setSelected((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
   }
 
+  if (state === 'loading') return <main className="formShell"><p>Cargando…</p></main>;
+
   return (
     <main className="formShell">
       <a className="backLink" href="/">← Volver al inicio</a>
       <div className="formIntro">
         <p className="eyebrow">Profesorado FP</p>
         <h1>Registrar actuación</h1>
-        <p>Un formulario breve. La coordinación no tendrá que volver a introducir estos datos.</p>
+        <p>
+          {me ? `Registras como ${me.firstName} ${me.lastName} · ${me.email}. ` : ''}
+          Tu identidad y el curso académico se incorporan automáticamente.
+        </p>
       </div>
-      {state === 'sent' ? (
+      {!me?.academicYearId ? (
+        <div className="errorBox">No hay un curso académico activo. La administración debe activarlo antes de registrar actuaciones.</div>
+      ) : state === 'sent' ? (
         <div className="successBox">
           <h2>Actuación enviada</h2>
           <p>Ha quedado registrada y pendiente de validación por la coordinación correspondiente.</p>
@@ -80,8 +98,8 @@ export default function NewActionPage() {
             </div>
           </fieldset>
           <fieldset>
-            <legend>3. ¿Con qué redes se relaciona?</legend>
-            <p className="hint">Puedes seleccionar más de una.</p>
+            <legend>3. Redes relacionadas</legend>
+            <p className="hint">Puedes seleccionar una o varias redes.</p>
             <div className="checks">
               {networks.map((network) => (
                 <label className="checkCard" key={network.id}>
@@ -91,15 +109,7 @@ export default function NewActionPage() {
               ))}
             </div>
           </fieldset>
-          <fieldset>
-            <legend>4. Tus datos</legend>
-            <p className="hint">Al activar el acceso institucional estos campos se completarán automáticamente.</p>
-            <div className="twoColumns">
-              <label>Nombre y apellidos<input name="submittedByName" maxLength={160} required /></label>
-              <label>Correo<input type="email" name="submittedByEmail" maxLength={254} required /></label>
-            </div>
-          </fieldset>
-          {state === 'error' && <p className="errorBox">No se pudo registrar la actuación. Revisa los datos e inténtalo de nuevo.</p>}
+          {state === 'error' && <p className="errorBox">No se pudo registrar la actuación. Revisa los datos o vuelve a iniciar sesión.</p>}
           <button className="primaryButton" disabled={state === 'sending' || selected.length === 0}>
             {state === 'sending' ? 'Enviando…' : 'Enviar actuación'}
           </button>
