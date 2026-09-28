@@ -9,6 +9,7 @@ import { DatabaseModule } from './database/database.module';
 import { EvidenceModule } from './evidence/evidence.module';
 import { HealthController } from './health.controller';
 import { NetworksModule } from './networks/networks.module';
+import { ReportsModule } from './reports/reports.module';
 import { SetupModule } from './setup/setup.module';
 import { StructureModule } from './structure/structure.module';
 import { UsersModule } from './users/users.module';
@@ -26,6 +27,7 @@ import { UsersModule } from './users/users.module';
     CommunicationsModule,
     DashboardModule,
     EvidenceModule,
+    ReportsModule,
     ActionsModule,
   ],
   controllers: [HealthController],
