@@ -128,6 +128,29 @@ export class ActionsService {
     });
   }
 
+  async validateBatch(ids: string[], user: AuthenticatedUser) {
+    const uniqueIds = [...new Set(ids)];
+    for (const id of uniqueIds) {
+      await this.assertCanManageAction(id, user);
+    }
+
+    const result = await this.prisma.action.updateMany({
+      where: {
+        id: { in: uniqueIds },
+        status: ActionStatus.PENDING_VALIDATION,
+      },
+      data: {
+        status: ActionStatus.VALIDATED,
+        validatedAt: new Date(),
+        validatedById: user.id,
+        returnedAt: null,
+        returnedReason: null,
+      },
+    });
+
+    return { validated: result.count };
+  }
+
   async validate(id: string, user: AuthenticatedUser) {
     await this.assertCanManageAction(id, user);
     return this.prisma.action.update({
