@@ -1,6 +1,9 @@
-import { NetworkCode, PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { NetworkCode, PrismaClient } from '../../../apps/api/src/generated/prisma/client';
 
-const prisma = new PrismaClient();
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) throw new Error('DATABASE_URL no está configurada.');
+const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
 
 async function main() {
   const center = await prisma.center.upsert({
@@ -61,10 +64,8 @@ async function main() {
   }
 }
 
-main()
-  .then(async () => prisma.$disconnect())
-  .catch(async (error) => {
-    console.error(error);
-    await prisma.$disconnect();
-    process.exit(1);
-  });
+main().then(() => prisma.$disconnect()).catch(async (error) => {
+  console.error(error);
+  await prisma.$disconnect();
+  process.exit(1);
+});

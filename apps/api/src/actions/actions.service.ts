@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { ActionStatus } from '@prisma/client';
+import { ActionStatus } from '../generated/prisma/client';
 import { PrismaService } from '../database/prisma.service';
 import { CreateActionDto } from './dto/create-action.dto';
 
