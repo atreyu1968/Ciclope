@@ -119,6 +119,11 @@ export class ActionsService {
         networks: { include: { network: true } },
         groups: { include: { teachingGroup: { include: { professionalFamily: true } } } },
         evidence: true,
+        objectives: {
+          include: {
+            objective: { include: { plan: { include: { network: true } } } },
+          },
+        },
       },
     });
     if (!action) throw new NotFoundException('Actuación no encontrada.');
@@ -135,6 +140,11 @@ export class ActionsService {
         networks: { include: { network: true } },
         groups: { include: { teachingGroup: { include: { professionalFamily: true } } } },
         evidence: true,
+        objectives: {
+          include: {
+            objective: { include: { plan: { include: { network: true } } } },
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
       take: 100,
