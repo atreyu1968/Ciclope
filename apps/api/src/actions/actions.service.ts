@@ -69,7 +69,7 @@ export class ActionsService {
       ? await this.prisma.planObjective.findMany({
           where: {
             id: { in: uniqueObjectiveIds },
-            status: { in: [PlanObjectiveStatus.PLANNED, PlanObjectiveStatus.IN_PROGRESS] },
+            status: { in: [PlanObjectiveStatus.PLANNED, PlanObjectiveStatus.IN_PROGRESS, PlanObjectiveStatus.COMPLETED] },
             plan: {
               academicYearId: user.academicYearId,
               networkId: { in: uniqueNetworkIds },
@@ -221,7 +221,7 @@ export class ActionsService {
       ? await this.prisma.planObjective.findMany({
           where: {
             id: { in: uniqueObjectiveIds },
-            status: { in: [PlanObjectiveStatus.PLANNED, PlanObjectiveStatus.IN_PROGRESS] },
+            status: { in: [PlanObjectiveStatus.PLANNED, PlanObjectiveStatus.IN_PROGRESS, PlanObjectiveStatus.COMPLETED] },
             plan: {
               academicYearId: user.academicYearId,
               networkId: { in: uniqueNetworkIds },
