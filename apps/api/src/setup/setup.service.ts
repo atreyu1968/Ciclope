@@ -34,6 +34,7 @@ export class SetupService {
 
       const superadmin = await tx.role.findUniqueOrThrow({ where: { key: 'SUPERADMIN' } });
       const admin = await tx.role.findUniqueOrThrow({ where: { key: 'ADMIN_CENTRO' } });
+      const professor = await tx.role.findUniqueOrThrow({ where: { key: 'PROFESOR_FP' } });
 
       const user = await tx.user.create({
         data: {
@@ -43,7 +44,11 @@ export class SetupService {
           lastName: dto.lastName.trim(),
           passwordHash,
           roles: {
-            create: [{ roleId: superadmin.id }, { roleId: admin.id }],
+            create: [
+              { roleId: superadmin.id },
+              { roleId: admin.id },
+              { roleId: professor.id },
+            ],
           },
         },
         include: { roles: { include: { role: true } } },
