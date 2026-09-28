@@ -2,11 +2,15 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { CommunicationStatus, Shift } from '../generated/prisma/client';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { PrismaService } from '../database/prisma.service';
+import { MailOutboxService } from '../mail/mail-outbox.service';
 import { CreateCommunicationDto } from './dto/create-communication.dto';
 
 @Injectable()
 export class CommunicationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mail: MailOutboxService,
+  ) {}
 
   private canPublishGlobally(user: AuthenticatedUser) {
     return ['SUPERADMIN', 'ADMIN_CENTRO', 'DIRECCION', 'COORDINADOR_CICLOPE']
@@ -27,6 +31,10 @@ export class CommunicationsService {
     if (!this.canPublishGlobally(user) && !user.coordinatorNetworkIds.includes(networkId)) {
       throw new ForbiddenException('No puedes publicar en nombre de esa red.');
     }
+  }
+
+  mailStatus() {
+    return { configured: this.mail.isConfigured() };
   }
 
   async createAndPublish(user: AuthenticatedUser, dto: CreateCommunicationDto) {
@@ -67,7 +75,7 @@ export class CommunicationsService {
                 : {}),
             }),
       },
-      select: { id: true },
+      select: { id: true, email: true },
     });
 
     if (!recipients.length) {
@@ -75,7 +83,7 @@ export class CommunicationsService {
     }
 
     const now = new Date();
-    return this.prisma.communication.create({
+    const communication = await this.prisma.communication.create({
       data: {
         academicYearId: user.academicYearId,
         authorId: user.id,
@@ -101,6 +109,16 @@ export class CommunicationsService {
         _count: { select: { recipients: true } },
       },
     });
+
+    const delivery = await this.mail.enqueueCommunication(
+      communication.id,
+      communication.title,
+      communication.body,
+      recipients,
+      communication.originNetwork?.name ?? 'CÍCLOPE FP',
+    );
+
+    return { ...communication, emailDelivery: delivery, smtpConfigured: this.mail.isConfigured() };
   }
 
   inbox(user: AuthenticatedUser) {
@@ -130,10 +148,13 @@ export class CommunicationsService {
     return this.prisma.communication.findMany({
       where: {
         academicYearId: user.academicYearId,
-        authorId: user.id,
+        ...(this.canPublishGlobally(user)
+          ? {}
+          : { originNetworkId: { in: user.coordinatorNetworkIds } }),
       },
       include: {
         originNetwork: true,
+        author: { select: { firstName: true, lastName: true } },
         recipients: {
           select: { userId: true, readAt: true, respondedAt: true },
         },
@@ -174,5 +195,47 @@ export class CommunicationsService {
         responseText: response.trim(),
       },
     });
+  }
+
+  async remindPending(user: AuthenticatedUser, communicationId: string) {
+    const communication = await this.prisma.communication.findUnique({
+      where: { id: communicationId },
+      include: {
+        academicYear: true,
+        originNetwork: true,
+        recipients: {
+          include: {
+            user: { select: { id: true, email: true } },
+          },
+        },
+      },
+    });
+
+    if (!communication || communication.academicYear.centerId !== user.centerId) {
+      throw new NotFoundException('Comunicación no encontrada.');
+    }
+    if (communication.academicYearId !== user.academicYearId) {
+      throw new ForbiddenException('La comunicación pertenece a otro curso académico.');
+    }
+    if (
+      !this.canPublishGlobally(user) &&
+      (!communication.originNetworkId || !user.coordinatorNetworkIds.includes(communication.originNetworkId))
+    ) {
+      throw new ForbiddenException('No puedes gestionar esta comunicación.');
+    }
+
+    const pending = communication.recipients
+      .filter((recipient) => communication.responseRequired ? !recipient.respondedAt : !recipient.readAt)
+      .map((recipient) => recipient.user);
+
+    if (!pending.length) return { queued: 0, message: 'No hay destinatarios pendientes.' };
+
+    return this.mail.enqueueCommunication(
+      communication.id,
+      `Recordatorio: ${communication.title}`,
+      communication.body,
+      pending,
+      communication.originNetwork?.name ?? 'CÍCLOPE FP',
+    );
   }
 }
