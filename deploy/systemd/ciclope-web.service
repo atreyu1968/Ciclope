@@ -1,0 +1,18 @@
+[Unit]
+Description=CICLOPE FP Web
+After=network.target ciclope-api.service
+
+[Service]
+Type=simple
+User=ciclope
+Group=ciclope
+WorkingDirectory=/opt/ciclope-fp/current
+EnvironmentFile=/etc/ciclope-fp/ciclope.env
+ExecStart=/usr/bin/npm run start --workspace @ciclope/web
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

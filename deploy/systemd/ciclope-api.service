@@ -1,0 +1,19 @@
+[Unit]
+Description=CICLOPE FP API
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=ciclope
+Group=ciclope
+WorkingDirectory=/opt/ciclope-fp/current
+EnvironmentFile=/etc/ciclope-fp/ciclope.env
+ExecStart=/usr/bin/npm run start --workspace @ciclope/api
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

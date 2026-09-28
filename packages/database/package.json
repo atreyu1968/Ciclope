@@ -1,0 +1,1 @@
+{"name":"@ciclope/database","version":"0.1.0","private":true,"dependencies":{"@prisma/client":"^7.0.0"}}
