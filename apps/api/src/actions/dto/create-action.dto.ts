@@ -22,4 +22,9 @@ export class CreateActionDto {
 
   @IsArray() @ArrayMinSize(1) @IsString({ each: true })
   networkIds!: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  teachingGroupIds?: string[];
 }
