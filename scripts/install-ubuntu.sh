@@ -59,6 +59,14 @@ NEXT_PUBLIC_API_URL=/api
 UPLOAD_DIR=$DATA_ROOT/uploads
 APP_BASE_URL=http://localhost
 SESSION_SECRET=$SESSION_SECRET
+
+# Correo: completar después en /etc/ciclope-fp/ciclope.env si se desean avisos por email.
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=
+SMTP_PASS=
+SMTP_FROM=
 EOF
 
 chmod 640 "$CONFIG_ROOT/ciclope.env"
