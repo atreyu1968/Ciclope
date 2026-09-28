@@ -21,6 +21,7 @@ export default function NewActionPage() {
   const [selected, setSelected] = useState<string[]>([]);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const [state, setState] = useState<'loading'|'idle'|'sending'|'sent'|'error'>('loading');
+  const [createdActionId, setCreatedActionId] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -64,8 +65,14 @@ export default function NewActionPage() {
         teachingGroupIds: selectedGroups,
       }),
     });
-    setState(response.ok ? 'sent' : 'error');
-    if (response.ok) event.currentTarget.reset();
+    if (response.ok) {
+      const created = await response.json();
+      setCreatedActionId(created.id);
+      setState('sent');
+      event.currentTarget.reset();
+    } else {
+      setState('error');
+    }
   }
 
   function toggleNetwork(id: string) {
@@ -96,7 +103,10 @@ export default function NewActionPage() {
         <div className="successBox">
           <h2>Actuación enviada</h2>
           <p>Ha quedado registrada y pendiente de validación por la coordinación correspondiente.</p>
-          <button className="primaryButton" onClick={() => { setState('idle'); setSelected([]); setSelectedGroups([]); }}>Registrar otra</button>
+          <div className="rowActions">
+            {createdActionId && <a className="primaryButton" href={`/actuaciones/${createdActionId}/evidencias`}>Añadir evidencias</a>}
+            <button className="secondaryButton" onClick={() => { setState('idle'); setSelected([]); setSelectedGroups([]); setCreatedActionId(null); }}>Registrar otra</button>
+          </div>
         </div>
       ) : (
         <form className="actionForm" onSubmit={submit}>
