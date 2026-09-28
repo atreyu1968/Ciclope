@@ -101,6 +101,7 @@ export default function CoordinationDashboardPage() {
         <a className="secondaryButton" href="/coordinacion/comunicaciones">Comunicaciones enviadas</a>
         <a className="secondaryButton" href="/comunicaciones/nueva">Publicar comunicación</a>
         <a className="secondaryButton" href="/actuaciones/nueva">Registrar actuación</a>
+        <a className="secondaryButton" href="/informes">Indicadores e informes</a>
       </section>
     </main>
   );
