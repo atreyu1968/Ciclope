@@ -198,7 +198,7 @@ export class PlansService {
           academicYearId: user.academicYearId,
           status: AnnualPlanStatus.ACTIVE,
         },
-        status: { in: [PlanObjectiveStatus.PLANNED, PlanObjectiveStatus.IN_PROGRESS] },
+        status: { in: [PlanObjectiveStatus.PLANNED, PlanObjectiveStatus.IN_PROGRESS, PlanObjectiveStatus.COMPLETED] },
       },
       select: {
         id: true,
