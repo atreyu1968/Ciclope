@@ -23,13 +23,27 @@ enum ActionStatus {
   ARCHIVED
 }
 
+enum Shift {
+  MORNING
+  AFTERNOON
+  BOTH
+  UNSPECIFIED
+}
+
+enum CommunicationStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
 model Center {
-  id            String         @id @default(cuid())
-  name          String
-  code          String?        @unique
-  createdAt     DateTime       @default(now())
-  academicYears AcademicYear[]
-  users         User[]
+  id                   String               @id @default(cuid())
+  name                 String
+  code                 String?              @unique
+  createdAt            DateTime             @default(now())
+  academicYears        AcademicYear[]
+  users                User[]
+  professionalFamilies ProfessionalFamily[]
 }
 
 model AcademicYear {
@@ -43,6 +57,7 @@ model AcademicYear {
   center              Center                @relation(fields: [centerId], references: [id], onDelete: Cascade)
   actions             Action[]
   communications      Communication[]
+  groups              TeachingGroup[]
   networkCoordinators NetworkCoordinator[]
   ciclopeCoordinators CiclopeCoordinator[]
   createdAt           DateTime              @default(now())
@@ -53,23 +68,27 @@ model AcademicYear {
 }
 
 model User {
-  id                   String                @id @default(cuid())
-  centerId             String
-  email                String
-  firstName            String
-  lastName             String
-  passwordHash         String?
-  active               Boolean               @default(true)
-  center               Center                @relation(fields: [centerId], references: [id], onDelete: Cascade)
-  roles                UserRole[]
-  evidence             Evidence[]
-  sessions             Session[]
-  submittedActions     Action[]              @relation("SubmittedActions")
-  validatedActions     Action[]              @relation("ValidatedActions")
-  networkCoordinations NetworkCoordinator[]
-  ciclopeCoordinations CiclopeCoordinator[]
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
+  id                      String                    @id @default(cuid())
+  centerId                String
+  email                   String
+  firstName               String
+  lastName                String
+  passwordHash            String?
+  shift                   Shift                     @default(UNSPECIFIED)
+  active                  Boolean                   @default(true)
+  center                  Center                    @relation(fields: [centerId], references: [id], onDelete: Cascade)
+  roles                   UserRole[]
+  evidence                Evidence[]
+  sessions                Session[]
+  submittedActions        Action[]                  @relation("SubmittedActions")
+  validatedActions        Action[]                  @relation("ValidatedActions")
+  networkCoordinations    NetworkCoordinator[]
+  ciclopeCoordinations    CiclopeCoordinator[]
+  professionalFamilies    UserProfessionalFamily[]
+  authoredCommunications  Communication[]           @relation("CommunicationAuthor")
+  communicationRecipients CommunicationRecipient[]
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
 
   @@unique([centerId, email])
   @@index([email])
@@ -104,17 +123,63 @@ model UserRole {
   @@id([userId, roleId])
 }
 
+model ProfessionalFamily {
+  id        String                   @id @default(cuid())
+  centerId  String
+  name      String
+  code      String?
+  active    Boolean                  @default(true)
+  center    Center                   @relation(fields: [centerId], references: [id], onDelete: Cascade)
+  users     UserProfessionalFamily[]
+  groups    TeachingGroup[]
+  createdAt DateTime                 @default(now())
+  updatedAt DateTime                 @updatedAt
+
+  @@unique([centerId, name])
+  @@unique([centerId, code])
+  @@index([centerId, active])
+}
+
+model UserProfessionalFamily {
+  userId               String
+  professionalFamilyId String
+  user                  User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  professionalFamily    ProfessionalFamily @relation(fields: [professionalFamilyId], references: [id], onDelete: Cascade)
+
+  @@id([userId, professionalFamilyId])
+  @@index([professionalFamilyId])
+}
+
+model TeachingGroup {
+  id                   String                @id @default(cuid())
+  academicYearId       String
+  professionalFamilyId String
+  name                 String
+  shift                Shift                 @default(UNSPECIFIED)
+  studentCount         Int?
+  active               Boolean               @default(true)
+  academicYear         AcademicYear          @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  professionalFamily   ProfessionalFamily    @relation(fields: [professionalFamilyId], references: [id], onDelete: Restrict)
+  actions              ActionTeachingGroup[]
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  @@unique([academicYearId, name])
+  @@index([academicYearId, professionalFamilyId])
+}
+
 model Network {
-  id           String                @id @default(cuid())
-  code         NetworkCode           @unique
-  name         String
-  description  String?
-  sortOrder    Int
-  active       Boolean               @default(true)
-  actions      ActionNetwork[]
-  coordinators NetworkCoordinator[]
-  createdAt    DateTime              @default(now())
-  updatedAt    DateTime              @updatedAt
+  id             String                @id @default(cuid())
+  code           NetworkCode           @unique
+  name           String
+  description    String?
+  sortOrder      Int
+  active         Boolean               @default(true)
+  actions        ActionNetwork[]
+  coordinators   NetworkCoordinator[]
+  communications Communication[]
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
 }
 
 model NetworkCoordinator {
@@ -148,12 +213,12 @@ model CiclopeCoordinator {
 }
 
 model Action {
-  id               String          @id @default(cuid())
+  id               String                @id @default(cuid())
   academicYearId   String
   title            String
   description      String
   type             String
-  status           ActionStatus    @default(PENDING_VALIDATION)
+  status           ActionStatus          @default(PENDING_VALIDATION)
   activityDate     DateTime
   durationMinutes  Int?
   studentCount     Int?
@@ -164,13 +229,14 @@ model Action {
   validatedAt      DateTime?
   returnedAt       DateTime?
   returnedReason   String?
-  academicYear     AcademicYear    @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
-  submittedBy      User?           @relation("SubmittedActions", fields: [submittedById], references: [id], onDelete: SetNull)
-  validatedBy      User?           @relation("ValidatedActions", fields: [validatedById], references: [id], onDelete: SetNull)
+  academicYear     AcademicYear          @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  submittedBy      User?                 @relation("SubmittedActions", fields: [submittedById], references: [id], onDelete: SetNull)
+  validatedBy      User?                 @relation("ValidatedActions", fields: [validatedById], references: [id], onDelete: SetNull)
   networks         ActionNetwork[]
+  groups           ActionTeachingGroup[]
   evidence         Evidence[]
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
 
   @@index([academicYearId, status])
   @@index([activityDate])
@@ -186,6 +252,16 @@ model ActionNetwork {
 
   @@id([actionId, networkId])
   @@index([networkId])
+}
+
+model ActionTeachingGroup {
+  actionId        String
+  teachingGroupId String
+  action          Action        @relation(fields: [actionId], references: [id], onDelete: Cascade)
+  teachingGroup   TeachingGroup @relation(fields: [teachingGroupId], references: [id], onDelete: Cascade)
+
+  @@id([actionId, teachingGroupId])
+  @@index([teachingGroupId])
 }
 
 model Evidence {
@@ -206,15 +282,38 @@ model Evidence {
 }
 
 model Communication {
-  id               String       @id @default(cuid())
+  id               String                  @id @default(cuid())
   academicYearId   String
+  authorId         String?
+  originNetworkId  String?
   title            String
   body             String
-  responseRequired Boolean      @default(false)
+  status           CommunicationStatus     @default(DRAFT)
+  responseRequired Boolean                 @default(false)
   deadline         DateTime?
   publishedAt      DateTime?
-  academicYear     AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
-  createdAt        DateTime     @default(now())
+  academicYear     AcademicYear            @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  author           User?                   @relation("CommunicationAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  originNetwork    Network?                @relation(fields: [originNetworkId], references: [id], onDelete: SetNull)
+  recipients       CommunicationRecipient[]
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
 
-  @@index([academicYearId])
+  @@index([academicYearId, status])
+  @@index([originNetworkId])
+  @@index([authorId])
+}
+
+model CommunicationRecipient {
+  communicationId String
+  userId          String
+  deliveredAt     DateTime?
+  readAt          DateTime?
+  respondedAt     DateTime?
+  responseText    String?
+  communication   Communication @relation(fields: [communicationId], references: [id], onDelete: Cascade)
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([communicationId, userId])
+  @@index([userId, readAt])
 }
