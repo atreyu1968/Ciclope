@@ -85,7 +85,7 @@ export default function CoordinationActionsPage() {
       {!error && actions.length === 0 && <div className="panel"><h2>Todo al día</h2><p className="empty">No hay actuaciones pendientes de validar.</p></div>}
       <div className="actionQueue">
         {actions.map((action) => (
-          <article className={`queueCard ${selected.includes(action.id) ? 'selectedCard' : ''}`} key={action.id}>
+          <article className={`queueCard selectionQueue ${selected.includes(action.id) ? 'selectedCard' : ''}`} key={action.id}>
             <div className="queueSelect">
               <input type="checkbox" aria-label={`Seleccionar ${action.title}`} checked={selected.includes(action.id)} onChange={() => toggle(action.id)} />
             </div>
