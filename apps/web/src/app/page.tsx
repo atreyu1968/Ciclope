@@ -38,7 +38,7 @@ export default function Home() {
         <div><p className="eyebrow">Trabajo diario</p><h2>Accesos principales</h2></div>
         <div className="metric"><strong>01</strong><a href="/actuaciones/nueva">Registrar actuación</a></div>
         <div className="metric"><strong>02</strong><a href="/coordinacion/actuaciones">Bandeja coordinación</a></div>
-        <div className="metric"><strong>03</strong><a href="/admin/cursos">Cursos y coordinaciones</a></div>
+        <div className="metric"><strong>03</strong><a href="/admin/cursos">Cursos y coordinaciones</a><a className="hint" href="/admin/profesorado">Gestionar profesorado</a></div>
       </section>
     </main>
   );
