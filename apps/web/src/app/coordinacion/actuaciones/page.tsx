@@ -13,7 +13,9 @@ type Action = {
 export default function CoordinationActionsPage() {
   const router = useRouter();
   const [actions, setActions] = useState<Action[]>([]);
+  const [selected, setSelected] = useState<string[]>([]);
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
 
   async function load() {
     const response = await fetch('/api/actions?status=PENDING_VALIDATION');
@@ -21,9 +23,32 @@ export default function CoordinationActionsPage() {
     if (response.status === 403) { setError('Tu cuenta no tiene una coordinación asignada en el curso activo.'); return; }
     if (!response.ok) { setError('No se pudo cargar la bandeja.'); return; }
     setActions(await response.json());
+    setSelected([]);
   }
 
   useEffect(() => { void load(); }, []);
+
+  function toggle(id: string) {
+    setSelected((current) => current.includes(id)
+      ? current.filter((item) => item !== id)
+      : [...current, id]);
+  }
+
+  async function validateSelected() {
+    if (!selected.length) return;
+    const response = await fetch('/api/actions/validate-batch', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ ids: selected }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setMessage(body.message || 'No se pudieron validar las actuaciones.');
+      return;
+    }
+    setMessage(`${body.validated} actuaciones validadas.`);
+    await load();
+  }
 
   async function validate(id: string) {
     const response = await fetch(`/api/actions/${id}/validate`, { method: 'PATCH' });
@@ -50,10 +75,20 @@ export default function CoordinationActionsPage() {
         <a className="secondaryButton" href="/">Volver</a>
       </div>
       {error && <div className="errorBox">{error}</div>}
+      {message && <div className="notice">{message}</div>}
+      {!error && actions.length > 0 && (
+        <div className="bulkBar">
+          <span>{selected.length} seleccionadas</span>
+          <button className="primaryButton" disabled={!selected.length} onClick={validateSelected}>Validar seleccionadas</button>
+        </div>
+      )}
       {!error && actions.length === 0 && <div className="panel"><h2>Todo al día</h2><p className="empty">No hay actuaciones pendientes de validar.</p></div>}
       <div className="actionQueue">
         {actions.map((action) => (
-          <article className="queueCard" key={action.id}>
+          <article className={`queueCard ${selected.includes(action.id) ? 'selectedCard' : ''}`} key={action.id}>
+            <div className="queueSelect">
+              <input type="checkbox" aria-label={`Seleccionar ${action.title}`} checked={selected.includes(action.id)} onChange={() => toggle(action.id)} />
+            </div>
             <div className="queueMain">
               <div className="queueMeta">
                 <span>{new Date(action.activityDate).toLocaleDateString('es-ES')}</span>
