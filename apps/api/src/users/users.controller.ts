@@ -5,6 +5,7 @@ import { RolesGuard } from '../auth/roles.guard';
 import { SessionGuard } from '../auth/session.guard';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { CreateUserDto } from './dto/create-user.dto';
+import { ImportUsersDto } from './dto/import-users.dto';
 import { UsersService } from './users.service';
 
 @Controller('users')
@@ -22,5 +23,11 @@ export class UsersController {
   @Roles('SUPERADMIN', 'ADMIN_CENTRO', 'DIRECCION')
   create(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateUserDto) {
     return this.users.create(user.centerId, dto);
+  }
+
+  @Post('import')
+  @Roles('SUPERADMIN', 'ADMIN_CENTRO', 'DIRECCION')
+  importMany(@CurrentUser() user: AuthenticatedUser, @Body() dto: ImportUsersDto) {
+    return this.users.importMany(user.centerId, dto);
   }
 }
