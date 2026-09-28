@@ -15,6 +15,7 @@ export default function Home() {
           <p>El profesorado registra las actuaciones. Las coordinaciones validan y el sistema reutiliza los datos para evidencias, indicadores e informes.</p>
         </div>
         <div className="rowActions">
+          <a className="secondaryButton" href="/coordinacion">Mi hora de coordinación</a>
           <a className="secondaryButton" href="/login">Acceder</a>
           <a className="primaryButton" href="/actuaciones/nueva">Registrar actuación</a>
         </div>
