@@ -24,6 +24,12 @@ const PUBLISHERS = [
 export class CommunicationsController {
   constructor(private readonly communications: CommunicationsService) {}
 
+  @Get('mail-status')
+  @Roles(...PUBLISHERS)
+  mailStatus() {
+    return this.communications.mailStatus();
+  }
+
   @Post()
   @Roles(...PUBLISHERS)
   create(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateCommunicationDto) {
@@ -53,5 +59,11 @@ export class CommunicationsController {
     @Body() dto: RespondCommunicationDto,
   ) {
     return this.communications.respond(user, id, dto.response);
+  }
+
+  @Post(':id/remind-pending')
+  @Roles(...PUBLISHERS)
+  remindPending(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.communications.remindPending(user, id);
   }
 }
