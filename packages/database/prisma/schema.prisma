@@ -36,6 +36,13 @@ enum CommunicationStatus {
   ARCHIVED
 }
 
+enum EmailOutboxStatus {
+  QUEUED
+  PROCESSING
+  SENT
+  FAILED
+}
+
 model Center {
   id                   String               @id @default(cuid())
   name                 String
@@ -87,6 +94,7 @@ model User {
   professionalFamilies    UserProfessionalFamily[]
   authoredCommunications  Communication[]           @relation("CommunicationAuthor")
   communicationRecipients CommunicationRecipient[]
+  emailJobs               EmailOutbox[]
   createdAt               DateTime                  @default(now())
   updatedAt               DateTime                  @updatedAt
 
@@ -296,6 +304,7 @@ model Communication {
   author           User?                   @relation("CommunicationAuthor", fields: [authorId], references: [id], onDelete: SetNull)
   originNetwork    Network?                @relation(fields: [originNetworkId], references: [id], onDelete: SetNull)
   recipients       CommunicationRecipient[]
+  emailJobs         EmailOutbox[]
   createdAt        DateTime                @default(now())
   updatedAt        DateTime                @updatedAt
 
@@ -316,4 +325,26 @@ model CommunicationRecipient {
 
   @@id([communicationId, userId])
   @@index([userId, readAt])
+}
+
+model EmailOutbox {
+  id              String            @id @default(cuid())
+  communicationId String?
+  userId          String?
+  recipientEmail  String
+  subject         String
+  textBody        String
+  status          EmailOutboxStatus @default(QUEUED)
+  attempts        Int               @default(0)
+  nextAttemptAt   DateTime          @default(now())
+  lastError       String?
+  sentAt          DateTime?
+  communication   Communication?    @relation(fields: [communicationId], references: [id], onDelete: Cascade)
+  user            User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([status, nextAttemptAt])
+  @@index([communicationId])
+  @@index([userId])
 }
