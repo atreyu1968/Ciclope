@@ -2,11 +2,15 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { StaffRequestStatus } from '../generated/prisma/client';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { PrismaService } from '../database/prisma.service';
+import { MailOutboxService } from '../mail/mail-outbox.service';
 import { CreateStaffRequestDto } from './dto/create-staff-request.dto';
 
 @Injectable()
 export class StaffRequestsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mail: MailOutboxService,
+  ) {}
 
   private isGlobal(user: AuthenticatedUser) {
     return ['SUPERADMIN', 'ADMIN_CENTRO', 'DIRECCION', 'COORDINADOR_CICLOPE']
@@ -37,6 +41,37 @@ export class StaffRequestsService {
     return request.networks.some((item) => user.coordinatorNetworkIds.includes(item.networkId));
   }
 
+  private async coordinatorRecipients(academicYearId: string, networkIds: string[], excludeUserId?: string) {
+    const [networkAssignments, ciclopeAssignments] = await Promise.all([
+      this.prisma.networkCoordinator.findMany({
+        where: {
+          academicYearId,
+          networkId: { in: networkIds },
+          user: { active: true },
+        },
+        include: { user: { select: { id: true, email: true } } },
+      }),
+      this.prisma.ciclopeCoordinator.findMany({
+        where: {
+          academicYearId,
+          user: { active: true },
+        },
+        include: { user: { select: { id: true, email: true } } },
+      }),
+    ]);
+
+    const recipients = [...networkAssignments, ...ciclopeAssignments]
+      .map((item) => item.user)
+      .filter((recipient) => recipient.id !== excludeUserId);
+
+    return [...new Map(recipients.map((recipient) => [recipient.id, recipient])).values()];
+  }
+
+  private requestLink(id: string) {
+    const base = process.env.APP_BASE_URL?.replace(/\/$/, '');
+    return base ? `${base}/buzon/${id}` : '';
+  }
+
   async create(user: AuthenticatedUser, dto: CreateStaffRequestDto) {
     if (!user.academicYearId) throw new BadRequestException('No existe un curso académico activo.');
 
@@ -48,7 +83,7 @@ export class StaffRequestsService {
       throw new BadRequestException('Una o más redes seleccionadas no son válidas.');
     }
 
-    return this.prisma.staffRequest.create({
+    const request = await this.prisma.staffRequest.create({
       data: {
         academicYearId: user.academicYearId,
         submittedById: user.id,
@@ -69,6 +104,21 @@ export class StaffRequestsService {
         messages: true,
       },
     });
+
+    const recipients = await this.coordinatorRecipients(user.academicYearId, networkIds, user.id);
+    const link = this.requestLink(request.id);
+    await this.mail.enqueueDirect(
+      `[CÍCLOPE FP · Buzón] ${request.subject}`,
+      [
+        `${user.firstName} ${user.lastName} ha enviado una nueva ${request.category.toLowerCase()}.`,
+        '',
+        dto.body.trim(),
+        link ? `\nAbrir en CÍCLOPE: ${link}` : '',
+      ].join('\n'),
+      recipients,
+    );
+
+    return request;
   }
 
   mine(user: AuthenticatedUser) {
@@ -162,6 +212,36 @@ export class StaffRequestsService {
       });
     }
 
+    const link = this.requestLink(id);
+    if (owner) {
+      const recipients = await this.coordinatorRecipients(
+        request.academicYearId,
+        request.networks.map((item) => item.networkId),
+        user.id,
+      );
+      await this.mail.enqueueDirect(
+        `[CÍCLOPE FP · Buzón] Actualización: ${request.subject}`,
+        [
+          `${user.firstName} ${user.lastName} ha añadido un mensaje.`,
+          '',
+          body.trim(),
+          link ? `\nAbrir en CÍCLOPE: ${link}` : '',
+        ].join('\n'),
+        recipients,
+      );
+    } else {
+      await this.mail.enqueueDirect(
+        `[CÍCLOPE FP · Buzón] Respuesta: ${request.subject}`,
+        [
+          `${user.firstName} ${user.lastName} ha respondido a tu consulta.`,
+          '',
+          body.trim(),
+          link ? `\nAbrir en CÍCLOPE: ${link}` : '',
+        ].join('\n'),
+        [{ id: request.submittedBy.id, email: request.submittedBy.email }],
+      );
+    }
+
     return message;
   }
 
@@ -174,7 +254,7 @@ export class StaffRequestsService {
       throw new ForbiddenException('No puedes gestionar esta consulta.');
     }
 
-    return this.prisma.staffRequest.update({
+    const updated = await this.prisma.staffRequest.update({
       where: { id },
       data: {
         status,
@@ -183,5 +263,19 @@ export class StaffRequestsService {
           : null,
       },
     });
+
+    if ([StaffRequestStatus.RESOLVED, StaffRequestStatus.CLOSED].includes(status)) {
+      const link = this.requestLink(id);
+      await this.mail.enqueueDirect(
+        `[CÍCLOPE FP · Buzón] ${status === StaffRequestStatus.RESOLVED ? 'Consulta resuelta' : 'Consulta cerrada'}: ${request.subject}`,
+        [
+          `La coordinación ha actualizado el estado de tu consulta a “${status === StaffRequestStatus.RESOLVED ? 'Resuelta' : 'Cerrada'}”.`,
+          link ? `\nAbrir en CÍCLOPE: ${link}` : '',
+        ].join('\n'),
+        [{ id: request.submittedBy.id, email: request.submittedBy.email }],
+      );
+    }
+
+    return updated;
   }
 }
