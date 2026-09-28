@@ -7,6 +7,7 @@ import type { AuthenticatedUser } from '../auth/auth.types';
 import { ActionsService } from './actions.service';
 import { CreateActionDto } from './dto/create-action.dto';
 import { ReturnActionDto } from './dto/return-action.dto';
+import { ValidateActionsDto } from './dto/validate-actions.dto';
 
 const COORDINATION_ROLES = [
   'SUPERADMIN',
@@ -41,6 +42,12 @@ export class ActionsController {
     @Query('status') status?: string,
   ) {
     return this.actions.findAll(user, status);
+  }
+
+  @Patch('validate-batch')
+  @Roles(...COORDINATION_ROLES)
+  validateBatch(@Body() dto: ValidateActionsDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.actions.validateBatch(dto.ids, user);
   }
 
   @Patch(':id/validate')
