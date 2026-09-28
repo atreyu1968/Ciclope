@@ -11,6 +11,7 @@ import { HealthController } from './health.controller';
 import { NetworksModule } from './networks/networks.module';
 import { ReportsModule } from './reports/reports.module';
 import { SetupModule } from './setup/setup.module';
+import { StaffRequestsModule } from './staff-requests/staff-requests.module';
 import { StructureModule } from './structure/structure.module';
 import { UsersModule } from './users/users.module';
 
@@ -28,6 +29,7 @@ import { UsersModule } from './users/users.module';
     DashboardModule,
     EvidenceModule,
     ReportsModule,
+    StaffRequestsModule,
     ActionsModule,
   ],
   controllers: [HealthController],
