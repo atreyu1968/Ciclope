@@ -86,6 +86,23 @@ export class ActionsService {
     });
   }
 
+  async findMineOne(id: string, user: AuthenticatedUser) {
+    const action = await this.prisma.action.findFirst({
+      where: {
+        id,
+        submittedById: user.id,
+        ...(user.academicYearId ? { academicYearId: user.academicYearId } : {}),
+      },
+      include: {
+        networks: { include: { network: true } },
+        groups: { include: { teachingGroup: { include: { professionalFamily: true } } } },
+        evidence: true,
+      },
+    });
+    if (!action) throw new NotFoundException('Actuación no encontrada.');
+    return action;
+  }
+
   findMine(user: AuthenticatedUser) {
     return this.prisma.action.findMany({
       where: {
@@ -125,6 +142,75 @@ export class ActionsService {
       },
       orderBy: { createdAt: 'desc' },
       take: 100,
+    });
+  }
+
+  async resubmit(id: string, dto: CreateActionDto, user: AuthenticatedUser) {
+    if (!user.academicYearId) throw new BadRequestException('No existe un curso académico activo.');
+
+    const current = await this.prisma.action.findFirst({
+      where: {
+        id,
+        submittedById: user.id,
+        academicYearId: user.academicYearId,
+      },
+    });
+    if (!current) throw new NotFoundException('Actuación no encontrada.');
+    if (current.status !== ActionStatus.RETURNED) {
+      throw new BadRequestException('Solo pueden reenviarse actuaciones devueltas para corrección.');
+    }
+
+    const uniqueNetworkIds = [...new Set(dto.networkIds)];
+    const networkCount = await this.prisma.network.count({
+      where: { id: { in: uniqueNetworkIds }, active: true },
+    });
+    if (networkCount !== uniqueNetworkIds.length) {
+      throw new BadRequestException('Una o más redes seleccionadas no son válidas.');
+    }
+
+    const uniqueGroupIds = [...new Set(dto.teachingGroupIds ?? [])];
+    const groups = uniqueGroupIds.length
+      ? await this.prisma.teachingGroup.findMany({
+          where: {
+            id: { in: uniqueGroupIds },
+            academicYearId: user.academicYearId,
+            active: true,
+          },
+          select: { id: true, studentCount: true },
+        })
+      : [];
+    if (groups.length !== uniqueGroupIds.length) {
+      throw new BadRequestException('Uno o más grupos no pertenecen al curso activo.');
+    }
+    const inferredStudentCount = groups.reduce((sum, group) => sum + (group.studentCount ?? 0), 0);
+
+    return this.prisma.action.update({
+      where: { id },
+      data: {
+        title: dto.title.trim(),
+        description: dto.description.trim(),
+        type: dto.type,
+        activityDate: new Date(dto.activityDate),
+        durationMinutes: dto.durationMinutes,
+        studentCount: dto.studentCount ?? (groups.length ? inferredStudentCount : undefined),
+        status: ActionStatus.PENDING_VALIDATION,
+        returnedAt: null,
+        returnedReason: null,
+        validatedAt: null,
+        validatedById: null,
+        networks: {
+          deleteMany: {},
+          create: uniqueNetworkIds.map((networkId) => ({ networkId })),
+        },
+        groups: {
+          deleteMany: {},
+          create: uniqueGroupIds.map((teachingGroupId) => ({ teachingGroupId })),
+        },
+      },
+      include: {
+        networks: { include: { network: true } },
+        groups: { include: { teachingGroup: true } },
+      },
     });
   }
 
