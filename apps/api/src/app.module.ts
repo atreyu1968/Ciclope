@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { CommunicationsModule } from './communications/communications.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { DatabaseModule } from './database/database.module';
+import { EvidenceModule } from './evidence/evidence.module';
 import { HealthController } from './health.controller';
 import { NetworksModule } from './networks/networks.module';
 import { SetupModule } from './setup/setup.module';
@@ -24,6 +25,7 @@ import { UsersModule } from './users/users.module';
     NetworksModule,
     CommunicationsModule,
     DashboardModule,
+    EvidenceModule,
     ActionsModule,
   ],
   controllers: [HealthController],
