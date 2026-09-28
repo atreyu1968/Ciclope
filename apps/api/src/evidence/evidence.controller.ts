@@ -69,7 +69,7 @@ export class EvidenceController {
     limits: { fileSize: 25 * 1024 * 1024 },
     fileFilter: (_request, file, callback) => {
       if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
-        callback(new Error('Tipo de archivo no permitido.'));
+        callback(new Error('Tipo de archivo no permitido.'), false);
         return;
       }
       callback(null, true);
