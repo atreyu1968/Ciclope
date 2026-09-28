@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { ActionStatus } from '../generated/prisma/client';
+import { ActionStatus, AnnualPlanStatus, PlanObjectiveStatus } from '../generated/prisma/client';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { PrismaService } from '../database/prisma.service';
 import { CreateActionDto } from './dto/create-action.dto';
@@ -64,6 +64,26 @@ export class ActionsService {
 
     const inferredStudentCount = groups.reduce((sum, group) => sum + (group.studentCount ?? 0), 0);
 
+    const uniqueObjectiveIds = [...new Set(dto.objectiveIds ?? [])];
+    const objectives = uniqueObjectiveIds.length
+      ? await this.prisma.planObjective.findMany({
+          where: {
+            id: { in: uniqueObjectiveIds },
+            status: { in: [PlanObjectiveStatus.PLANNED, PlanObjectiveStatus.IN_PROGRESS] },
+            plan: {
+              academicYearId: user.academicYearId,
+              networkId: { in: uniqueNetworkIds },
+              status: AnnualPlanStatus.ACTIVE,
+            },
+          },
+          select: { id: true },
+        })
+      : [];
+
+    if (objectives.length !== uniqueObjectiveIds.length) {
+      throw new BadRequestException('Uno o más objetivos no pertenecen a un plan activo de las redes seleccionadas.');
+    }
+
     return this.prisma.action.create({
       data: {
         title: dto.title.trim(),
@@ -78,10 +98,12 @@ export class ActionsService {
         academicYearId: user.academicYearId,
         networks: { create: uniqueNetworkIds.map((networkId) => ({ networkId })) },
         groups: { create: uniqueGroupIds.map((teachingGroupId) => ({ teachingGroupId })) },
+        objectives: { create: uniqueObjectiveIds.map((objectiveId) => ({ objectiveId })) },
       },
       include: {
         networks: { include: { network: true } },
         groups: { include: { teachingGroup: { include: { professionalFamily: true } } } },
+        objectives: { include: { objective: { include: { plan: { include: { network: true } } } } } },
       },
     });
   }
@@ -184,6 +206,26 @@ export class ActionsService {
     }
     const inferredStudentCount = groups.reduce((sum, group) => sum + (group.studentCount ?? 0), 0);
 
+    const uniqueObjectiveIds = [...new Set(dto.objectiveIds ?? [])];
+    const objectives = uniqueObjectiveIds.length
+      ? await this.prisma.planObjective.findMany({
+          where: {
+            id: { in: uniqueObjectiveIds },
+            status: { in: [PlanObjectiveStatus.PLANNED, PlanObjectiveStatus.IN_PROGRESS] },
+            plan: {
+              academicYearId: user.academicYearId,
+              networkId: { in: uniqueNetworkIds },
+              status: AnnualPlanStatus.ACTIVE,
+            },
+          },
+          select: { id: true },
+        })
+      : [];
+
+    if (objectives.length !== uniqueObjectiveIds.length) {
+      throw new BadRequestException('Uno o más objetivos no pertenecen a un plan activo de las redes seleccionadas.');
+    }
+
     return this.prisma.action.update({
       where: { id },
       data: {
@@ -206,10 +248,15 @@ export class ActionsService {
           deleteMany: {},
           create: uniqueGroupIds.map((teachingGroupId) => ({ teachingGroupId })),
         },
+        objectives: {
+          deleteMany: {},
+          create: uniqueObjectiveIds.map((objectiveId) => ({ objectiveId })),
+        },
       },
       include: {
         networks: { include: { network: true } },
         groups: { include: { teachingGroup: true } },
+        objectives: { include: { objective: true } },
       },
     });
   }
