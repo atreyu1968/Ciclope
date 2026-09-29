@@ -1,8 +1,9 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { ActionStatus, NetworkCode, PlanMetric, PlanTaskStatus } from '../generated/prisma/client';
+import { ActionStatus, NetworkCode, PlanMetric, PlanTaskStatus, ReportSnapshotStatus } from '../generated/prisma/client';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { PrismaService } from '../database/prisma.service';
 import { ACTION_NETWORK_FIELDS } from '../actions/action-form.config';
+import { CreateReportSnapshotDto } from './dto/create-report-snapshot.dto';
 
 type ReportScope = {
   academicYearId: string;
@@ -477,6 +478,119 @@ export class ReportsService {
         .sort((a, b) => a.name.localeCompare(b.name)),
       generatedAt: new Date().toISOString(),
     };
+  }
+
+  async saveSnapshot(user: AuthenticatedUser, dto: CreateReportSnapshotDto) {
+    const report = await this.summary(
+      user,
+      dto.academicYearId,
+      dto.networkId,
+      dto.from,
+      dto.to,
+    );
+
+    const start = report.period.from.toISOString().slice(0, 10);
+    const end = report.period.to.toISOString().slice(0, 10);
+    const title = dto.title?.trim()
+      || `${report.network?.name ?? 'Redes de Enseñanzas Profesionales'} · ${start} a ${end}`;
+
+    return this.prisma.reportSnapshot.create({
+      data: {
+        academicYearId: report.academicYear.id,
+        networkId: report.network?.id ?? null,
+        createdById: user.id,
+        title,
+        periodStart: report.period.from,
+        periodEnd: report.period.to,
+        data: JSON.parse(JSON.stringify(report)),
+        narrative: dto.narrative?.trim() || null,
+      },
+      include: {
+        academicYear: { select: { id: true, name: true } },
+        network: { select: { id: true, name: true } },
+        createdBy: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+  }
+
+  async listSnapshots(
+    user: AuthenticatedUser,
+    academicYearId?: string,
+    networkId?: string,
+  ) {
+    const scope = await this.resolveScope(user, academicYearId, networkId);
+
+    return this.prisma.reportSnapshot.findMany({
+      where: {
+        academicYearId: scope.academicYearId,
+        ...(this.isGlobal(user)
+          ? (scope.requestedNetworkId ? { networkId: scope.requestedNetworkId } : {})
+          : {
+              OR: [
+                { createdById: user.id },
+                { networkId: { in: scope.networkIds ?? [] } },
+              ],
+            }),
+      },
+      include: {
+        academicYear: { select: { id: true, name: true } },
+        network: { select: { id: true, name: true } },
+        createdBy: { select: { id: true, firstName: true, lastName: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+  }
+
+  async snapshotDetail(user: AuthenticatedUser, id: string) {
+    const snapshot = await this.prisma.reportSnapshot.findUnique({
+      where: { id },
+      include: {
+        academicYear: true,
+        network: true,
+        createdBy: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+    if (!snapshot || snapshot.academicYear.centerId !== user.centerId) {
+      throw new NotFoundException('Corte histórico no encontrado.');
+    }
+
+    if (!this.isGlobal(user) && snapshot.createdById !== user.id) {
+      if (!snapshot.networkId) {
+        throw new ForbiddenException('No puedes consultar este corte histórico.');
+      }
+      const assignment = await this.prisma.networkCoordinator.findFirst({
+        where: {
+          academicYearId: snapshot.academicYearId,
+          networkId: snapshot.networkId,
+          userId: user.id,
+        },
+        select: { id: true },
+      });
+      if (!assignment) throw new ForbiddenException('No puedes consultar este corte histórico.');
+    }
+
+    return snapshot;
+  }
+
+  async updateSnapshotStatus(
+    user: AuthenticatedUser,
+    id: string,
+    status: ReportSnapshotStatus,
+  ) {
+    await this.snapshotDetail(user, id);
+    return this.prisma.reportSnapshot.update({
+      where: { id },
+      data: {
+        status,
+        submittedAt: status === ReportSnapshotStatus.SUBMITTED ? new Date() : null,
+      },
+      include: {
+        academicYear: { select: { id: true, name: true } },
+        network: { select: { id: true, name: true } },
+        createdBy: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
   }
 
   async actionRows(
