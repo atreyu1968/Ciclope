@@ -130,6 +130,9 @@ model User {
   mustChangePassword      Boolean                   @default(false)
   shift                   Shift                     @default(UNSPECIFIED)
   active                  Boolean                   @default(true)
+  emailNotifications      Boolean                   @default(true)
+  reminderEmails          Boolean                   @default(true)
+  weeklySummaryEmail      Boolean                   @default(true)
   center                  Center                    @relation(fields: [centerId], references: [id], onDelete: Cascade)
   roles                   UserRole[]
   evidence                Evidence[]
