@@ -7,6 +7,7 @@ export type AuthenticatedUser = {
   firstName: string;
   lastName: string;
   roles: string[];
+  mustChangePassword: boolean;
   academicYearId?: string;
   academicYearName?: string;
   centerName: string;
