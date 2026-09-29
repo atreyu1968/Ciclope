@@ -174,9 +174,9 @@ export default function NewActionPage() {
       </div>
 
       {!me?.academicYearId ? (
-        <div className="errorBox">No hay un curso académico activo. La administración debe activarlo antes de registrar actuaciones.</div>
+        <div className="errorBox" role="alert">No hay un curso académico activo. La administración debe activarlo antes de registrar actuaciones.</div>
       ) : state === 'sent' ? (
-        <div className="successBox">
+        <div className="successBox" role="status" aria-live="polite">
           <h2>{createdStatus === 'DRAFT' ? 'Borrador guardado' : 'Actuación enviada'}</h2>
           <p>
             {createdStatus === 'DRAFT'
@@ -349,7 +349,7 @@ export default function NewActionPage() {
             </fieldset>
           )}
 
-          {state === 'error' && <p className="errorBox">No se pudo registrar la actuación. Revisa los datos o vuelve a iniciar sesión.</p>}
+          {state === 'error' && <p className="errorBox" role="alert">No se pudo registrar la actuación. Revisa los datos o vuelve a iniciar sesión.</p>}
           <div className="rowActions formSubmitActions" aria-label="Acciones del formulario">
             <button
               className="secondaryButton"
