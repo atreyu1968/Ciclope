@@ -23,6 +23,12 @@ const areas = [
     title: 'Integraciones',
     description: 'Configura Resend y la API de IA del centro, comprueba su estado y realiza pruebas de conexión.',
   },
+  {
+    href: '/admin/auditoria',
+    eyebrow: 'Seguridad y trazabilidad',
+    title: 'Auditoría',
+    description: 'Consulta las operaciones sensibles realizadas sobre cuentas, contraseñas y configuración administrativa.',
+  },
 ];
 
 export default function AdminPage() {
