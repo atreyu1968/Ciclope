@@ -50,7 +50,14 @@ export default function AutomationsStatusPage() {
   }, [router]);
 
   if (error) return <main className="shell"><div className="errorBox">{error}</div></main>;
-  if (!data) return <main className="shell"><p>Cargando automatizaciones…</p></main>;
+  if (!data) return (
+    <main className="shell">
+      <div className="loadingState" role="status" aria-live="polite">
+        <span className="loadingSpinner" aria-hidden="true" />
+        <strong>Cargando estado de automatizaciones…</strong>
+      </div>
+    </main>
+  );
 
   return (
     <main className="shell">
