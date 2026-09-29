@@ -98,3 +98,61 @@
 .emptyState{min-height:150px;align-content:center}.emptyState h2,.emptyState h3{margin:0;color:var(--ink);font-size:1.08rem}.emptyState p{margin:0;max-width:680px;line-height:1.55}.emptyState .rowActions{margin-top:8px}
 .loadingState{grid-template-columns:auto 1fr;align-items:center;min-height:92px}.loadingSpinner{width:18px;height:18px;border:2px solid #cbd7e2;border-top-color:var(--institutional-2);border-radius:999px;animation:ciclopeSpin .8s linear infinite}.loadingState strong{color:var(--ink)}
 @keyframes ciclopeSpin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.loadingSpinner{animation:none;border-top-color:#cbd7e2}}@media(max-width:640px){.emptyState,.loadingState{padding:22px 18px}}
+
+
+/* Responsive hardening: phone widths, long institutional labels and dense action areas. */
+.pageHeader>*,.panelHeader>*,.assignmentRow>*,.queueCard>*,.planLayout>*,.adminGrid>*,.networkAdminGrid>*{min-width:0}
+.pageHeader .rowActions,.panelHeader .rowActions,.snapshotActions{flex-wrap:wrap}
+h1,h2,h3,p,span,strong,label,td,th{overflow-wrap:anywhere}
+.primaryButton,.secondaryButton,.textButton{min-height:42px}
+@media(max-width:760px){
+  .pageHeader{gap:18px}
+  .pageHeader>.rowActions{width:100%;justify-content:flex-start}
+  .pageHeader>.rowActions .primaryButton,.pageHeader>.rowActions .secondaryButton{flex:1 1 180px}
+  .panelHeader{flex-wrap:wrap}
+  .panelHeader>div:first-child{flex:1 1 220px}
+  .bulkBar{display:grid;grid-template-columns:1fr;position:static}
+  .bulkBar .primaryButton{width:100%}
+  .reportFooter{display:grid;gap:6px}
+}
+@media(max-width:640px){
+  .shell,.formShell{width:calc(100% - 24px)}
+  .panel,.successBox,.errorBox{padding:18px 16px}
+  fieldset{padding:18px 14px}
+  .pageHeader h1{font-size:clamp(1.8rem,9vw,2.45rem)}
+  .pageHeader>.rowActions,.rowActions{gap:8px;flex-wrap:wrap;justify-content:flex-start}
+  .pageHeader>.rowActions .primaryButton,.pageHeader>.rowActions .secondaryButton,.assignmentRow>.primaryButton,.assignmentRow>.secondaryButton{width:100%;flex-basis:100%}
+  .panelHeader{display:grid;gap:12px}
+  .panelHeader .badge{justify-self:start}
+  .statusControl{width:100%}
+  .sectionHeading{display:grid;gap:8px;align-items:start}
+  .queueActions{width:100%}
+  .queueActions .primaryButton,.queueActions .secondaryButton{width:100%}
+  .selectionQueue{grid-template-columns:auto minmax(0,1fr)}
+  .selectionQueue .queueActions{grid-column:1/-1}
+  .statsRow{grid-template-columns:1fr}
+  .reportDocument{padding:18px 14px;border-radius:14px}
+  .reportHeader h1{font-size:1.8rem}
+  .reportKpis{grid-template-columns:1fr 1fr}
+  .monthRow{grid-template-columns:90px minmax(80px,1fr) 28px}
+  .calendarPanel{padding:14px 10px}
+  .filterBar{overflow-x:auto;flex-wrap:nowrap;padding-bottom:6px}
+  .filterChip{flex:0 0 auto;white-space:nowrap}
+  .messageBubble{padding:14px}
+  .attachmentDraftList>div,.attachmentLink{display:grid;gap:5px}
+  .attachmentLink small,.attachmentDraftList small{text-align:left}
+  .objectiveMetric{gap:9px}
+  .planRow span,.taskRow span{min-width:0}
+}
+@media(max-width:420px){
+  .topbar{padding:14px 12px}
+  .topbar>.rowActions{width:100%;justify-content:flex-start}
+  .topbar .secondaryLink,.topbar .secondaryButton{width:100%}
+  .hero{padding:20px 16px}
+  .reportKpis{grid-template-columns:1fr}
+  .calendarLegend{grid-template-columns:1fr}
+  .monthRow{grid-template-columns:1fr 30px}
+  .monthRow>span{grid-column:1/-1}
+  .formSubmitActions{grid-template-columns:1fr}
+  .formShell:has(.mobileOptimizedForm){padding-bottom:170px}
+}
