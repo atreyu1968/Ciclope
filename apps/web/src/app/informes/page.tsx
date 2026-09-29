@@ -41,6 +41,18 @@ type Summary = {
     network: { id: string; name: string };
     measurableObjectives: number;
     averageProgressPercent: number | null;
+    taskSummary: {
+      total: number;
+      done: number;
+      pending: number;
+      overdue: number;
+      officialMilestones: Array<{
+        id: string;
+        title: string;
+        status: string;
+        dueDate?: string | null;
+      }>;
+    };
     objectives: Array<{
       id: string;
       title: string;
@@ -262,6 +274,26 @@ export default function ReportsPage() {
                       {plan.averageProgressPercent === null ? 'Sin métricas' : plan.averageProgressPercent + '% medio'}
                     </span>
                   </div>
+                  <div className="pendingSummary">
+                    <span>{plan.taskSummary.done}/{plan.taskSummary.total} tareas completadas</span>
+                    <span>{plan.taskSummary.pending} pendientes</span>
+                    {plan.taskSummary.overdue > 0 && <span>{plan.taskSummary.overdue} fuera de plazo</span>}
+                  </div>
+                  {plan.taskSummary.officialMilestones.length > 0 && (
+                    <div className="officialMilestones">
+                      {plan.taskSummary.officialMilestones.map((milestone) => (
+                        <div key={milestone.id}>
+                          <strong>{milestone.title}</strong>
+                          <span>
+                            {milestone.dueDate ? new Date(milestone.dueDate).toLocaleDateString('es-ES') : 'Sin fecha'}
+                            {' · '}
+                            {milestone.status === 'DONE' ? 'Completado' : milestone.status === 'IN_PROGRESS' ? 'En curso' : 'Pendiente'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   {plan.objectives.length ? (
                     <div className="tableWrap">
                       <table>
