@@ -180,6 +180,72 @@ export class PlansService implements OnModuleInit {
     });
   }
 
+  async calendar(user: AuthenticatedUser, academicYearId?: string) {
+    const targetYearId = academicYearId ?? user.academicYearId;
+    if (!targetYearId) {
+      return { academicYear: null, tasks: [] };
+    }
+
+    const year = await this.assertYear(user, targetYearId);
+    let networkIds: string[] | undefined;
+    if (!this.isGlobal(user)) {
+      const assignments = await this.prisma.networkCoordinator.findMany({
+        where: { academicYearId: targetYearId, userId: user.id },
+        select: { networkId: true },
+      });
+      networkIds = assignments.map((item) => item.networkId);
+      if (!networkIds.length) {
+        return {
+          academicYear: {
+            id: year.id,
+            name: year.name,
+            startsAt: year.startsAt,
+            endsAt: year.endsAt,
+          },
+          tasks: [],
+        };
+      }
+    }
+
+    const tasks = await this.prisma.planTask.findMany({
+      where: {
+        dueDate: { not: null },
+        status: { not: PlanTaskStatus.CANCELLED },
+        plan: {
+          academicYearId: targetYearId,
+          ...(networkIds ? { networkId: { in: networkIds } } : {}),
+        },
+      },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        dueDate: true,
+        status: true,
+        official: true,
+        objective: { select: { id: true, title: true } },
+        owner: { select: { id: true, firstName: true, lastName: true } },
+        plan: {
+          select: {
+            id: true,
+            network: { select: { id: true, name: true, code: true } },
+          },
+        },
+      },
+      orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
+    });
+
+    return {
+      academicYear: {
+        id: year.id,
+        name: year.name,
+        startsAt: year.startsAt,
+        endsAt: year.endsAt,
+      },
+      tasks,
+    };
+  }
+
   async create(user: AuthenticatedUser, dto: CreatePlanDto) {
     if (!user.academicYearId) throw new BadRequestException('No existe un curso académico activo.');
     const [year, network] = await Promise.all([
