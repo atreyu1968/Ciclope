@@ -1,0 +1,2 @@
+ALTER TABLE "PlanTask"
+ADD COLUMN "official" BOOLEAN NOT NULL DEFAULT false;
