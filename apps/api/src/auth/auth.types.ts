@@ -8,6 +8,8 @@ export type AuthenticatedUser = {
   lastName: string;
   roles: string[];
   academicYearId?: string;
+  academicYearName?: string;
+  centerName: string;
   coordinatorNetworkIds: string[];
   coordinatorNetworkCodes: string[];
 };
