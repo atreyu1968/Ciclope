@@ -255,8 +255,8 @@
 - [ ] Manual del administrador.
 - [ ] Manual del coordinador.
 - [ ] Guía rápida para el profesorado.
-- [ ] Documentar configuración de Resend.
-- [ ] Documentar proveedores de IA compatibles y privacidad.
+- [x] Documentar configuración de Resend.
+- [x] Documentar proveedores de IA compatibles y privacidad.
 - [ ] Changelog.
 - [ ] Etiqueta/release de GitHub para v1.0.0.
 - [ ] Checklist de aceptación de producción firmado técnicamente.
