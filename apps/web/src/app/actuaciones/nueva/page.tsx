@@ -184,8 +184,16 @@ export default function NewActionPage() {
           </div>
         </div>
       ) : (
-        <form className="actionForm" onSubmit={submit}>
-          <fieldset>
+        <form className="actionForm mobileOptimizedForm" onSubmit={submit}>
+          <nav className="formStepNav" aria-label="Secciones del formulario">
+            <a href="#paso-actuacion">1. Actuación</a>
+            <a href="#paso-grupos">2. Grupos</a>
+            <a href="#paso-redes">3. Redes</a>
+            {selected.length > 0 && <a href="#paso-datos-red">4. Datos de red</a>}
+            {selected.length > 0 && <a href="#paso-objetivos">5. Objetivos</a>}
+          </nav>
+
+          <fieldset id="paso-actuacion">
             <legend>1. ¿Qué has hecho?</legend>
             <label>Título<input name="title" maxLength={180} required /></label>
             <label>Descripción<textarea name="description" rows={5} maxLength={4000} required /></label>
@@ -201,7 +209,7 @@ export default function NewActionPage() {
             </div>
           </fieldset>
 
-          <fieldset>
+          <fieldset id="paso-grupos">
             <legend>2. Grupos participantes</legend>
             {groups.length ? (
               <>
@@ -224,13 +232,13 @@ export default function NewActionPage() {
             )}
             <div className="twoColumns">
               <label>N.º de alumnos
-                <input type="number" name="studentCount" min="0" placeholder={selectedGroups.length ? `Automático: ${inferredStudents}` : ''} />
+                <input type="number" name="studentCount" min="0" inputMode="numeric" placeholder={selectedGroups.length ? `Automático: ${inferredStudents}` : ''} />
               </label>
-              <label>Duración (minutos)<input type="number" name="durationMinutes" min="0" /></label>
+              <label>Duración (minutos)<input type="number" name="durationMinutes" min="0" inputMode="numeric" /></label>
             </div>
           </fieldset>
 
-          <fieldset>
+          <fieldset id="paso-redes">
             <legend>3. Redes relacionadas</legend>
             <p className="hint">Puedes seleccionar una o varias redes. Una única actuación puede alimentar varias memorias.</p>
             <div className="checks">
@@ -244,7 +252,7 @@ export default function NewActionPage() {
           </fieldset>
 
           {selected.length > 0 && (
-            <fieldset>
+            <fieldset id="paso-datos-red">
               <legend>4. Datos útiles para la red <span className="hint">(opcional)</span></legend>
               <p className="hint">
                 Solo se muestran los datos que después sirven para indicadores y memoria. Si no conoces alguno, déjalo sin indicar.
@@ -311,7 +319,7 @@ export default function NewActionPage() {
           )}
 
           {selected.length > 0 && (
-            <fieldset>
+            <fieldset id="paso-objetivos">
               <legend>5. Objetivos del plan anual</legend>
               {visibleObjectives.length ? (
                 <>
@@ -335,7 +343,7 @@ export default function NewActionPage() {
           )}
 
           {state === 'error' && <p className="errorBox">No se pudo registrar la actuación. Revisa los datos o vuelve a iniciar sesión.</p>}
-          <div className="rowActions">
+          <div className="rowActions formSubmitActions" aria-label="Acciones del formulario">
             <button
               className="secondaryButton"
               type="submit"
