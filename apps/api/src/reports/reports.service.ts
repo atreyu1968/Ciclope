@@ -130,7 +130,7 @@ export class ReportsService {
       include: { center: { select: { name: true, code: true } } },
     });
 
-    const [validated, pendingCount, returnedCount, annualPlans] = await Promise.all([
+    const [validated, pendingCount, returnedCount, annualPlans, availableNetworks] = await Promise.all([
       this.prisma.action.findMany({
         where: this.actionWhere(scope, ActionStatus.VALIDATED),
         include: {
@@ -193,6 +193,18 @@ export class ReportsService {
           },
         },
         orderBy: { network: { sortOrder: 'asc' } },
+      }),
+      this.prisma.network.findMany({
+        where: {
+          active: true,
+          ...(scope.networkIds
+            ? { id: { in: scope.networkIds } }
+            : scope.requestedNetworkId
+              ? { id: scope.requestedNetworkId }
+              : {}),
+        },
+        select: { id: true, code: true, name: true, sortOrder: true },
+        orderBy: { sortOrder: 'asc' },
       }),
     ]);
 
@@ -415,6 +427,55 @@ export class ReportsService {
       };
     });
 
+    const plansByNetworkId = new Map(planProgress.map((plan) => [plan.network.id, plan]));
+    const transversalRows = availableNetworks.map((network) => {
+      const activity = networkMap.get(network.id) ?? {
+        id: network.id,
+        name: network.name,
+        actions: 0,
+        participants: 0,
+        evidence: 0,
+      };
+      const plan = plansByNetworkId.get(network.id);
+
+      return {
+        id: network.id,
+        code: network.code,
+        name: network.name,
+        actions: activity.actions,
+        participants: activity.participants,
+        evidence: activity.evidence,
+        planConfigured: Boolean(plan),
+        planProgressPercent: plan?.averageProgressPercent ?? null,
+        objectives: plan?.objectives.length ?? 0,
+        measurableObjectives: plan?.measurableObjectives ?? 0,
+        tasksTotal: plan?.taskSummary.total ?? 0,
+        tasksDone: plan?.taskSummary.done ?? 0,
+        tasksPending: plan?.taskSummary.pending ?? 0,
+        tasksOverdue: plan?.taskSummary.overdue ?? 0,
+      };
+    });
+
+    const measurableNetworkPlans = transversalRows.filter((item) => item.planProgressPercent !== null);
+    const transversalOverview = scope.requestedNetworkId
+      ? null
+      : {
+          networkCount: transversalRows.length,
+          networksWithActivity: transversalRows.filter((item) => item.actions > 0).length,
+          networksWithoutActivity: transversalRows.filter((item) => item.actions === 0).length,
+          plansConfigured: transversalRows.filter((item) => item.planConfigured).length,
+          averagePlanProgressPercent: measurableNetworkPlans.length
+            ? Math.round(
+                measurableNetworkPlans.reduce(
+                  (sum, item) => sum + (item.planProgressPercent ?? 0),
+                  0,
+                ) / measurableNetworkPlans.length,
+              )
+            : null,
+          networksWithOverdueTasks: transversalRows.filter((item) => item.tasksOverdue > 0).length,
+          rows: transversalRows,
+        };
+
     const networkInsights = [...insightMap.values()]
       .map((network) => ({
         id: network.id,
@@ -518,6 +579,7 @@ export class ReportsService {
         evidenceCoveragePercent,
       },
       planProgress,
+      transversalOverview,
       networkInsights,
       alerts: reportAlerts,
       byNetwork: [...networkMap.values()].sort((a, b) => b.actions - a.actions || a.name.localeCompare(b.name)),
