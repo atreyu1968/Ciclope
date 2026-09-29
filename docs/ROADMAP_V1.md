@@ -207,7 +207,7 @@
 - [x] Recordatorios de tareas próximas.
 - [x] Recordatorios de comunicaciones pendientes.
 - [x] Notificaciones del flujo de actuaciones.
-- [ ] Resumen semanal de coordinación.
+- [x] Resumen semanal de coordinación.
 - [x] Aviso de tareas vencidas.
 - [x] Aviso de hitos próximos.
 - [x] Aviso de comunicaciones sin respuesta tras el plazo.
