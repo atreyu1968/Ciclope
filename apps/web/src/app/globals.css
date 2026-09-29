@@ -156,3 +156,15 @@ h1,h2,h3,p,span,strong,label,td,th{overflow-wrap:anywhere}
   .formSubmitActions{grid-template-columns:1fr}
   .formShell:has(.mobileOptimizedForm){padding-bottom:170px}
 }
+
+
+/* Accessibility hardening: keyboard navigation, focus visibility and usable targets. */
+.skipLink{position:fixed;left:12px;top:10px;z-index:1000;transform:translateY(-160%);background:#fff;color:var(--institutional);border:2px solid var(--institutional);border-radius:9px;padding:10px 14px;font-weight:800;box-shadow:0 6px 20px rgba(21,36,58,.18)}
+.skipLink:focus{transform:translateY(0)}
+a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:3px solid #1f628f;outline-offset:3px}
+button,summary,[role="button"]{touch-action:manipulation}
+button:not(.textButton),a.primaryButton,a.secondaryButton{min-height:44px}
+.textButton{min-height:40px;padding:6px 4px}
+input[type="checkbox"],input[type="radio"]{min-width:20px;min-height:20px}
+[aria-busy="true"]{cursor:progress}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}}
