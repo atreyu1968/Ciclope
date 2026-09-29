@@ -8,6 +8,7 @@ import type { AuthenticatedUser } from '../auth/auth.types';
 import { ReportsService } from './reports.service';
 import { CreateReportSnapshotDto } from './dto/create-report-snapshot.dto';
 import { UpdateReportSnapshotStatusDto } from './dto/update-report-snapshot-status.dto';
+import { UpdateReportSnapshotNarrativeDto } from './dto/update-report-snapshot-narrative.dto';
 import { IntegrationsService } from '../integrations/integrations.service';
 
 const REPORT_ROLES = [
@@ -93,6 +94,15 @@ export class ReportsController {
     @Param('id') id: string,
   ) {
     return this.reports.snapshotDetail(user, id);
+  }
+
+  @Patch('snapshots/:id/narrative')
+  updateSnapshotNarrative(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: UpdateReportSnapshotNarrativeDto,
+  ) {
+    return this.reports.updateSnapshotNarrative(user, id, dto.narrative);
   }
 
   @Patch('snapshots/:id/status')
