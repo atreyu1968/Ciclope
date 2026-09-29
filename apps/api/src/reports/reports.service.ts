@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { ActionStatus, NetworkCode, PlanMetric, PlanTaskStatus, ReportSnapshotStatus } from '../generated/prisma/client';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { PrismaService } from '../database/prisma.service';
@@ -571,6 +571,39 @@ export class ReportsService {
     }
 
     return snapshot;
+  }
+
+  async updateSnapshotNarrative(
+    user: AuthenticatedUser,
+    id: string,
+    narrative: string,
+  ) {
+    const snapshot = await this.snapshotDetail(user, id);
+    if (snapshot.status === ReportSnapshotStatus.SUBMITTED) {
+      throw new BadRequestException('El corte está marcado como entregado. Reábrelo antes de modificar la narrativa.');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.reportSnapshot.update({
+        where: { id },
+        data: { narrative: narrative.trim() || null },
+        include: {
+          academicYear: { select: { id: true, name: true } },
+          network: { select: { id: true, name: true } },
+          createdBy: { select: { id: true, firstName: true, lastName: true } },
+        },
+      });
+      await tx.auditLog.create({
+        data: {
+          centerId: user.centerId,
+          actorId: user.id,
+          action: 'REPORT_NARRATIVE_UPDATED',
+          entityType: 'ReportSnapshot',
+          entityId: id,
+        },
+      });
+      return updated;
+    });
   }
 
   async updateSnapshotStatus(
