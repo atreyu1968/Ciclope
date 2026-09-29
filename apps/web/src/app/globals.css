@@ -36,3 +36,6 @@
 .aiInterpretation{background:#f7fafc;border:1px solid #d8e3ed;border-radius:14px;padding:20px}
 
 .warningChip{background:#fff4e5!important;color:#805715!important}.validationDetails{margin-top:12px;padding:12px 14px;border-left:3px solid #cddfea;background:#f8fafc;border-radius:8px;display:grid;gap:8px}.validationDetails>strong{font-size:.86rem;color:var(--institutional)}
+
+.officialMilestones{display:grid;gap:8px;margin:14px 0}.officialMilestones>div{display:flex;justify-content:space-between;gap:18px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fbfcfd}.officialMilestones span{color:var(--muted);font-size:.82rem;text-align:right}
+@media(max-width:640px){.officialMilestones>div{display:grid}.officialMilestones span{text-align:left}}
