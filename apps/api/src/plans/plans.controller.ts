@@ -4,6 +4,7 @@ import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { SessionGuard } from '../auth/session.guard';
 import type { AuthenticatedUser } from '../auth/auth.types';
+import { CreateMilestoneDto } from './dto/create-milestone.dto';
 import { CreateObjectiveDto } from './dto/create-objective.dto';
 import { CreatePlanDto } from './dto/create-plan.dto';
 import { CreateTaskDto } from './dto/create-task.dto';
@@ -31,6 +32,24 @@ export class PlansController {
   @Get('available-objectives')
   availableObjectives(@CurrentUser() user: AuthenticatedUser) {
     return this.plans.availableObjectives(user);
+  }
+
+  @Get('milestones')
+  @Roles(...PLAN_ROLES)
+  milestones(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('academicYearId') academicYearId?: string,
+  ) {
+    return this.plans.listMilestones(user, academicYearId);
+  }
+
+  @Post('milestones')
+  @Roles('SUPERADMIN', 'ADMIN_CENTRO', 'DIRECCION', 'COORDINADOR_CICLOPE')
+  createMilestone(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CreateMilestoneDto,
+  ) {
+    return this.plans.createMilestone(user, dto);
   }
 
   @Get()
