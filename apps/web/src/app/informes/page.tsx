@@ -24,6 +24,16 @@ type Summary = {
     actionsWithoutEvidence: number;
     evidenceCoveragePercent: number;
   };
+  networkInsights: Array<{
+    id: string;
+    name: string;
+    code: string;
+    fields: Array<{
+      key: string;
+      label: string;
+      values: Array<{ value: string; label: string; count: number }>;
+    }>;
+  }>;
   planProgress: Array<{
     id: string;
     title: string;
@@ -272,6 +282,32 @@ export default function ReportsPage() {
                       </table>
                     </div>
                   ) : <p className="empty">El plan todavía no tiene objetivos.</p>}
+                </div>
+              ))}
+            </section>
+          )}
+
+          {summary.networkInsights.length > 0 && (
+            <section className="reportSection">
+              <h2>Indicadores específicos de las redes</h2>
+              <p className="reportNote">
+                Se calculan automáticamente a partir de los campos opcionales que el profesorado completa al registrar cada actuación.
+              </p>
+              {summary.networkInsights.map((network) => (
+                <div className="planReportBlock" key={network.id}>
+                  <p className="eyebrow">{network.name}</p>
+                  <div className="insightGrid">
+                    {network.fields.map((field) => (
+                      <div className="insightField" key={field.key}>
+                        <strong>{field.label}</strong>
+                        <div className="insightValues">
+                          {field.values.map((value) => (
+                            <span key={value.value}>{value.label} · {value.count}</span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </section>
