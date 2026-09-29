@@ -62,6 +62,7 @@ export default function FacultyAdminPage() {
 
   async function createUser(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setWorkingId('new');
     setMessage('');
     setError('');
     setTemporaryPassword('');
@@ -80,6 +81,7 @@ export default function FacultyAdminPage() {
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
+      setWorkingId('');
       setError(errorMessage(body, 'No se pudo crear la cuenta.'));
       return;
     }
@@ -89,6 +91,7 @@ export default function FacultyAdminPage() {
     setMessage('Cuenta creada correctamente. El docente deberá cambiar la contraseña temporal en el primer acceso.');
     event.currentTarget.reset();
     await load();
+    setWorkingId('');
   }
 
   async function updateUser(event: FormEvent<HTMLFormElement>, userId: string) {
@@ -206,7 +209,9 @@ export default function FacultyAdminPage() {
               Contraseña temporal
               <input type="text" name="temporaryPassword" minLength={12} placeholder="Opcional: se genera automáticamente" />
             </label>
-            <button className="primaryButton">Crear cuenta</button>
+            <button className="primaryButton" disabled={Boolean(workingId)}>
+              {workingId === 'new' ? 'Creando cuenta…' : 'Crear cuenta'}
+            </button>
           </form>
         </article>
 
