@@ -9,6 +9,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { DatabaseModule } from './database/database.module';
 import { EvidenceModule } from './evidence/evidence.module';
 import { HealthController } from './health.controller';
+import { IntegrationsModule } from './integrations/integrations.module';
 import { NetworksModule } from './networks/networks.module';
 import { PlansModule } from './plans/plans.module';
 import { ReportsModule } from './reports/reports.module';
@@ -23,6 +24,7 @@ import { UsersModule } from './users/users.module';
     DatabaseModule,
     SetupModule,
     AuthModule,
+    IntegrationsModule,
     AutomationsModule,
     UsersModule,
     AcademicYearsModule,
