@@ -30,6 +30,7 @@ export default function CoordinationStaffInboxPage() {
   const [aiError, setAiError] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [workingId, setWorkingId] = useState('');
 
   async function load(status = filter) {
     setLoading(true);
@@ -79,12 +80,14 @@ export default function CoordinationStaffInboxPage() {
   }
 
   async function setStatus(id: string, status: string) {
+    setWorkingId(id + ':' + status);
     const response = await fetch(`/api/staff-requests/${id}/status`, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ status }),
     });
     if (response.ok) await load();
+    setWorkingId('');
   }
 
   return (
@@ -165,9 +168,21 @@ export default function CoordinationStaffInboxPage() {
             </div>
             <div className="queueActions">
               <a className="primaryButton" href={`/buzon/${item.id}`}>Abrir</a>
-              {item.status === 'NEW' && <button className="secondaryButton" onClick={() => setStatus(item.id, 'IN_PROGRESS')}>En curso</button>}
-              {item.status !== 'RESOLVED' && item.status !== 'CLOSED' && <button className="secondaryButton" onClick={() => setStatus(item.id, 'RESOLVED')}>Resolver</button>}
-              {item.status === 'RESOLVED' && <button className="secondaryButton" onClick={() => setStatus(item.id, 'CLOSED')}>Cerrar</button>}
+              {item.status === 'NEW' && (
+                <button className="secondaryButton" disabled={Boolean(workingId)} onClick={() => setStatus(item.id, 'IN_PROGRESS')}>
+                  {workingId === item.id + ':IN_PROGRESS' ? 'Actualizando…' : 'En curso'}
+                </button>
+              )}
+              {item.status !== 'RESOLVED' && item.status !== 'CLOSED' && (
+                <button className="secondaryButton" disabled={Boolean(workingId)} onClick={() => setStatus(item.id, 'RESOLVED')}>
+                  {workingId === item.id + ':RESOLVED' ? 'Resolviendo…' : 'Resolver'}
+                </button>
+              )}
+              {item.status === 'RESOLVED' && (
+                <button className="secondaryButton" disabled={Boolean(workingId)} onClick={() => setStatus(item.id, 'CLOSED')}>
+                  {workingId === item.id + ':CLOSED' ? 'Cerrando…' : 'Cerrar'}
+                </button>
+              )}
             </div>
           </article>
         ))}
