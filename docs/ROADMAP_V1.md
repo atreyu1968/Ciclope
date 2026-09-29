@@ -226,7 +226,7 @@
 - [x] Estados vacíos coherentes.
 - [x] Indicadores de carga en todas las acciones asíncronas.
 - [x] Confirmaciones para operaciones destructivas.
-- [ ] Revisión responsive completa.
+- [x] Revisión responsive completa.
 - [ ] Revisión de accesibilidad por teclado, etiquetas y contraste.
 - [ ] Unificar mensajes de error y éxito.
 
