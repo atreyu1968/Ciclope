@@ -11,6 +11,7 @@ import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateObjectiveStatusDto } from './dto/update-objective-status.dto';
 import { UpdatePlanStatusDto } from './dto/update-plan-status.dto';
 import { UpdateTaskStatusDto } from './dto/update-task-status.dto';
+import { PostponeTaskDto } from './dto/postpone-task.dto';
 import { PlansService } from './plans.service';
 
 const PLAN_ROLES = [
@@ -121,5 +122,15 @@ export class PlansController {
     @Body() dto: UpdateTaskStatusDto,
   ) {
     return this.plans.updateTaskStatus(user, id, dto.status);
+  }
+
+  @Patch('task/:id/postpone')
+  @Roles(...PLAN_ROLES)
+  postponeTask(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: PostponeTaskDto,
+  ) {
+    return this.plans.postponeTask(user, id, dto.days);
   }
 }
