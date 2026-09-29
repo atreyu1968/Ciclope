@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { PrismaService } from '../src/database/prisma.service';
+import { NetworksService } from '../src/networks/networks.service';
 import {
   ActionStatus,
   AnnualPlanStatus,
@@ -104,6 +105,30 @@ test('PostgreSQL persiste y relaciona el flujo básico de un curso completo', as
     const innovation = await prisma.network.findUniqueOrThrow({
       where: { code: NetworkCode.INNOVATION },
     });
+
+    await prisma.centerNetworkConfig.create({
+      data: {
+        centerId: center.id,
+        networkId: innovation.id,
+        description: 'Descripción institucional exclusiva del centro CI',
+        institutionalObjectives: ['Objetivo institucional CI 1', 'Objetivo institucional CI 2'],
+      },
+    });
+
+    const networksService = new NetworksService(prisma);
+    const centerNetworks = await networksService.findAll(center.id);
+    const configuredInnovation = centerNetworks.find((network) => network.id === innovation.id);
+    assert.equal(configuredInnovation?.description, 'Descripción institucional exclusiva del centro CI');
+    assert.deepEqual(configuredInnovation?.institutionalObjectives, [
+      'Objetivo institucional CI 1',
+      'Objetivo institucional CI 2',
+    ]);
+
+    const seededCenter = await prisma.center.findUniqueOrThrow({ where: { code: 'CONFIGURAR' } });
+    const seededCenterNetworks = await networksService.findAll(seededCenter.id);
+    const otherInnovation = seededCenterNetworks.find((network) => network.id === innovation.id);
+    assert.notEqual(otherInnovation?.description, 'Descripción institucional exclusiva del centro CI');
+    assert.deepEqual(otherInnovation?.institutionalObjectives, []);
 
     const action = await prisma.action.create({
       data: {
