@@ -8,6 +8,20 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
       DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci
     steps:
@@ -21,7 +35,13 @@ jobs:
         run: npm run db:generate
       - name: Validate Prisma schema
         run: npx prisma validate --config prisma7.config.ts
+      - name: Apply database migrations
+        run: npm run db:migrate
+      - name: Seed integration database
+        run: npm run db:seed
       - name: Unit and authorization tests
         run: npm run test:unit
+      - name: PostgreSQL integration tests
+        run: npm run test:integration
       - name: Build
         run: npm run build
