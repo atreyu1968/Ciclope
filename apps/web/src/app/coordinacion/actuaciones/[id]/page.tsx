@@ -69,7 +69,14 @@ export default function ActionHistoryPage() {
   }, [params.id, router]);
 
   if (error) return <main className="shell"><div className="errorBox">{error}</div></main>;
-  if (!data) return <main className="shell"><p>Cargando historial…</p></main>;
+  if (!data) return (
+    <main className="shell">
+      <div className="loadingState" role="status" aria-live="polite">
+        <span className="loadingSpinner" aria-hidden="true" />
+        <strong>Cargando historial de validación…</strong>
+      </div>
+    </main>
+  );
 
   return (
     <main className="shell conversationShell">
@@ -97,6 +104,12 @@ export default function ActionHistoryPage() {
         </div>
 
         <div className="statusTimeline">
+          {!data.events.length && (
+            <div className="emptyState">
+              <h3>Sin eventos de validación registrados</h3>
+              <p>Los cambios de estado aparecerán aquí cuando la actuación avance por el flujo de revisión.</p>
+            </div>
+          )}
           {data.events.map((event) => {
             const reason = typeof event.details?.reason === 'string' ? event.details.reason : '';
             const eventStatus = typeof event.details?.status === 'string' ? event.details.status : '';
