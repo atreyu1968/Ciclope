@@ -481,6 +481,7 @@ model PlanTask {
   description String?
   dueDate     DateTime?
   status      PlanTaskStatus @default(TODO)
+  official    Boolean        @default(false)
   completedAt DateTime?
   plan        AnnualPlan     @relation(fields: [planId], references: [id], onDelete: Cascade)
   objective   PlanObjective? @relation(fields: [objectiveId], references: [id], onDelete: SetNull)
