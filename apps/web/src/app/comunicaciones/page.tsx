@@ -30,18 +30,27 @@ export default function CommunicationsInboxPage() {
   const router = useRouter();
   const [items, setItems] = useState<InboxItem[]>([]);
   const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(true);
 
   async function load() {
-    const response = await fetch('/api/communications/inbox');
-    if (response.status === 401) {
-      router.push('/login');
-      return;
-    }
-    if (!response.ok) {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/communications/inbox');
+      if (response.status === 401) {
+        router.push('/login');
+        return;
+      }
+      if (!response.ok) {
+        setMessage('No se pudo cargar la bandeja.');
+        return;
+      }
+      setMessage('');
+      setItems(await response.json());
+    } catch {
       setMessage('No se pudo cargar la bandeja.');
-      return;
+    } finally {
+      setLoading(false);
     }
-    setItems(await response.json());
   }
 
   useEffect(() => { void load(); }, []);
@@ -76,6 +85,12 @@ export default function CommunicationsInboxPage() {
         </div>
       </div>
       {message && <div className="errorBox">{message}</div>}
+      {loading && !message && (
+        <div className="loadingState" role="status" aria-live="polite">
+          <span className="loadingSpinner" aria-hidden="true" />
+          <strong>Cargando comunicaciones…</strong>
+        </div>
+      )}
       <div className="actionQueue">
         {items.map((item) => {
           const communication = item.communication;
@@ -119,7 +134,13 @@ export default function CommunicationsInboxPage() {
             </article>
           );
         })}
-        {!items.length && !message && <div className="panel"><h2>Sin comunicaciones</h2><p className="empty">No tienes mensajes pendientes en el curso activo.</p></div>}
+        {!loading && !items.length && !message && (
+          <div className="emptyState">
+            <h2>No hay comunicaciones en tu bandeja</h2>
+            <p>Las comunicaciones dirigidas a ti aparecerán aquí. Puedes usar el buzón CÍCLOPE para enviar una consulta a las coordinaciones.</p>
+            <div className="rowActions"><a className="secondaryButton" href="/buzon/nueva">Enviar una consulta</a></div>
+          </div>
+        )}
       </div>
     </main>
   );
