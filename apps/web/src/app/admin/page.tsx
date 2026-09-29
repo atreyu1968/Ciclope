@@ -18,6 +18,12 @@ const areas = [
     description: 'Gestiona cursos académicos y vincula cada coordinación a su curso, admitiendo varias por docente.',
   },
   {
+    href: '/admin/redes',
+    eyebrow: 'Marco institucional',
+    title: 'Redes',
+    description: 'Edita para este centro la descripción y los objetivos de referencia de Innovación, Emprendimiento, IOP y Calidad.',
+  },
+  {
     href: '/admin/integraciones',
     eyebrow: 'Servicios externos',
     title: 'Integraciones',
