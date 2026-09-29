@@ -30,5 +30,9 @@
     "@prisma/engines@7.10.0": true,
     "esbuild@0.28.2": true,
     "argon2@0.44.0": true
+  },
+  "overrides": {
+    "deepmerge-ts": "8.0.2",
+    "mysql2": "3.24.4"
   }
 }
