@@ -26,6 +26,9 @@ export default function CoordinationStaffInboxPage() {
   const [items, setItems] = useState<RequestItem[]>([]);
   const [filter, setFilter] = useState('');
   const [error, setError] = useState('');
+  const [aiSummary, setAiSummary] = useState('');
+  const [aiError, setAiError] = useState('');
+  const [aiBusy, setAiBusy] = useState(false);
 
   async function load(status = filter) {
     const query = status ? `?status=${encodeURIComponent(status)}` : '';
@@ -46,6 +49,20 @@ export default function CoordinationStaffInboxPage() {
   }
 
   useEffect(() => { void load(); }, []);
+
+  async function summarizeInbox() {
+    setAiBusy(true);
+    setAiSummary('');
+    setAiError('');
+    const response = await fetch('/api/assistant/inbox-summary', { method: 'POST' });
+    const body = await response.json().catch(() => ({}));
+    setAiBusy(false);
+    if (!response.ok) {
+      setAiError(Array.isArray(body.message) ? body.message.join(' ') : body.message || 'No se pudo resumir el buzón.');
+      return;
+    }
+    setAiSummary(body.text || '');
+  }
 
   async function changeFilter(value: string) {
     setFilter(value);
@@ -71,6 +88,29 @@ export default function CoordinationStaffInboxPage() {
         </div>
         <a className="secondaryButton" href="/coordinacion">Mi hora</a>
       </div>
+
+      <section className="panel aiAssistBox">
+        <div className="panelHeader">
+          <div>
+            <p className="eyebrow">Asistente de IA</p>
+            <h2>Resumen del buzón abierto</h2>
+          </div>
+          <span className="badge warningChip">Requiere revisión humana</span>
+        </div>
+        <p className="hint">
+          Resume consultas nuevas y en curso de las redes que coordinas. El contexto enviado a la IA omite nombres y correos.
+        </p>
+        <button className="secondaryButton" type="button" disabled={aiBusy} onClick={() => void summarizeInbox()}>
+          {aiBusy ? 'Analizando…' : 'Resumir asuntos pendientes'}
+        </button>
+        {aiError && <div className="errorBox">{aiError}</div>}
+        {aiSummary && (
+          <div className="aiResult">
+            <pre>{aiSummary}</pre>
+            <p className="aiReviewNotice">Resumen generado con IA. Contrasta cada asunto con la consulta original antes de tomar decisiones.</p>
+          </div>
+        )}
+      </section>
 
       <div className="filterBar">
         {[
