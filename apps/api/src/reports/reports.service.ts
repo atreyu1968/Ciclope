@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { ActionStatus } from '../generated/prisma/client';
+import { ActionStatus, PlanMetric } from '../generated/prisma/client';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { PrismaService } from '../database/prisma.service';
 
@@ -79,7 +79,7 @@ export class ReportsService {
       include: { center: { select: { name: true, code: true } } },
     });
 
-    const [validated, pendingCount, returnedCount] = await Promise.all([
+    const [validated, pendingCount, returnedCount, annualPlans] = await Promise.all([
       this.prisma.action.findMany({
         where: this.actionWhere(scope, ActionStatus.VALIDATED),
         include: {
@@ -89,7 +89,7 @@ export class ReportsService {
               teachingGroup: { include: { professionalFamily: true } },
             },
           },
-          evidence: { select: { id: true } },
+          evidence: { select: { id: true, kind: true } },
           submittedBy: { select: { id: true, firstName: true, lastName: true, email: true } },
         },
         orderBy: { activityDate: 'asc' },
@@ -100,12 +100,47 @@ export class ReportsService {
       this.prisma.action.count({
         where: this.actionWhere(scope, ActionStatus.RETURNED),
       }),
+      this.prisma.annualPlan.findMany({
+        where: {
+          academicYearId: scope.academicYearId,
+          ...(scope.networkIds
+            ? { networkId: { in: scope.networkIds } }
+            : scope.requestedNetworkId
+              ? { networkId: scope.requestedNetworkId }
+              : {}),
+        },
+        include: {
+          network: { select: { id: true, name: true } },
+          objectives: {
+            include: {
+              actions: {
+                include: {
+                  action: {
+                    select: {
+                      id: true,
+                      status: true,
+                      studentCount: true,
+                      durationMinutes: true,
+                      evidence: { select: { id: true } },
+                    },
+                  },
+                },
+              },
+            },
+            orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+          },
+        },
+        orderBy: { network: { sortOrder: 'asc' } },
+      }),
     ]);
 
     const uniqueTeachers = new Map<string, string>();
     let studentParticipations = 0;
     let totalMinutes = 0;
     let evidenceCount = 0;
+    let evidenceFileCount = 0;
+    let evidenceLinkCount = 0;
+    let actionsWithEvidence = 0;
 
     const networkMap = new Map<string, { id: string; name: string; actions: number; participants: number; evidence: number }>();
     const familyMap = new Map<string, { id: string; name: string; actions: number; participants: number }>();
@@ -117,6 +152,9 @@ export class ReportsService {
       studentParticipations += participants;
       totalMinutes += action.durationMinutes ?? 0;
       evidenceCount += action.evidence.length;
+      if (action.evidence.length) actionsWithEvidence += 1;
+      evidenceFileCount += action.evidence.filter((item) => item.kind === 'FILE').length;
+      evidenceLinkCount += action.evidence.filter((item) => item.kind === 'LINK').length;
 
       const teacherKey = action.submittedById ?? action.submittedByEmail;
       uniqueTeachers.set(
@@ -183,6 +221,63 @@ export class ReportsService {
       ? await this.prisma.network.findUnique({ where: { id: networkId }, select: { id: true, name: true } })
       : null;
 
+    const planProgress = annualPlans.map((plan) => {
+      const objectives = plan.objectives.map((objective) => {
+        const validatedActions = objective.actions
+          .map((item) => item.action)
+          .filter((action) => action.status === ActionStatus.VALIDATED);
+
+        let currentValue: number | null = null;
+        if (objective.metric === PlanMetric.ACTIONS) {
+          currentValue = validatedActions.length;
+        } else if (objective.metric === PlanMetric.PARTICIPATIONS) {
+          currentValue = validatedActions.reduce((sum, action) => sum + (action.studentCount ?? 0), 0);
+        } else if (objective.metric === PlanMetric.HOURS) {
+          currentValue = Math.round(
+            (validatedActions.reduce((sum, action) => sum + (action.durationMinutes ?? 0), 0) / 60) * 10,
+          ) / 10;
+        } else if (objective.metric === PlanMetric.EVIDENCE) {
+          currentValue = validatedActions.reduce((sum, action) => sum + action.evidence.length, 0);
+        }
+
+        const progressPercent =
+          currentValue !== null && objective.targetValue && objective.targetValue > 0
+            ? Math.min(100, Math.round((currentValue / objective.targetValue) * 100))
+            : null;
+
+        return {
+          id: objective.id,
+          title: objective.title,
+          status: objective.status,
+          metric: objective.metric,
+          targetValue: objective.targetValue,
+          currentValue,
+          progressPercent,
+          linkedValidatedActions: validatedActions.length,
+        };
+      });
+
+      const measurable = objectives.filter((objective) => objective.progressPercent !== null);
+      const averageProgressPercent = measurable.length
+        ? Math.round(measurable.reduce((sum, objective) => sum + (objective.progressPercent ?? 0), 0) / measurable.length)
+        : null;
+
+      return {
+        id: plan.id,
+        title: plan.title,
+        status: plan.status,
+        network: plan.network,
+        objectives,
+        measurableObjectives: measurable.length,
+        averageProgressPercent,
+      };
+    });
+
+    const actionsWithoutEvidence = validated.length - actionsWithEvidence;
+    const evidenceCoveragePercent = validated.length
+      ? Math.round((actionsWithEvidence / validated.length) * 100)
+      : 0;
+
     return {
       center: year.center,
       academicYear: {
@@ -203,7 +298,13 @@ export class ReportsService {
         totalMinutes,
         totalHours: Math.round((totalMinutes / 60) * 10) / 10,
         evidence: evidenceCount,
+        evidenceFiles: evidenceFileCount,
+        evidenceLinks: evidenceLinkCount,
+        actionsWithEvidence,
+        actionsWithoutEvidence,
+        evidenceCoveragePercent,
       },
+      planProgress,
       byNetwork: [...networkMap.values()].sort((a, b) => b.actions - a.actions || a.name.localeCompare(b.name)),
       byFamily: [...familyMap.values()].sort((a, b) => b.actions - a.actions || a.name.localeCompare(b.name)),
       byType: [...typeMap.values()].sort((a, b) => b.actions - a.actions || a.type.localeCompare(b.type)),
