@@ -80,7 +80,7 @@
 - [x] Indicadores diferenciados por red.
 - [x] Plan anual independiente por red.
 - [x] Panel comparativo transversal de las cuatro redes.
-- [ ] Configuración administrativa de textos/objetivos institucionales sin modificar código.
+- [x] Configuración administrativa de textos/objetivos institucionales sin modificar código.
 
 ## 6. Registro de actuaciones por el profesorado
 
