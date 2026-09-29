@@ -56,6 +56,8 @@ export default function CoordinationActionsPage() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [workingId, setWorkingId] = useState('');
+  const [bulkWorking, setBulkWorking] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -144,6 +146,9 @@ export default function CoordinationActionsPage() {
 
   async function validateSelected() {
     if (!selected.length) return;
+    setBulkWorking(true);
+    setError('');
+    setMessage('');
     const response = await fetch('/api/actions/validate-batch', {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
@@ -151,26 +156,34 @@ export default function CoordinationActionsPage() {
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
-      setMessage(body.message || 'No se pudieron validar las actuaciones.');
+      setBulkWorking(false);
+      setError(Array.isArray(body.message) ? body.message.join(' ') : body.message || 'No se pudieron validar las actuaciones.');
       return;
     }
     setMessage(`${body.validated} actuaciones validadas.`);
     await load();
+    setBulkWorking(false);
   }
 
   async function validate(id: string) {
+    setWorkingId(id + ':validate');
+    setError('');
     const response = await fetch(`/api/actions/${id}/validate`, { method: 'PATCH' });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
+      setWorkingId('');
       setError(Array.isArray(body.message) ? body.message.join(' ') : body.message || 'No se pudo validar la actuación.');
       return;
     }
     await load();
+    setWorkingId('');
   }
 
   async function returnAction(id: string) {
     const reason = window.prompt('Indica qué debe corregir el profesor:');
     if (!reason) return;
+    setWorkingId(id + ':return');
+    setError('');
     const response = await fetch(`/api/actions/${id}/return`, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
@@ -178,10 +191,12 @@ export default function CoordinationActionsPage() {
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
+      setWorkingId('');
       setError(Array.isArray(body.message) ? body.message.join(' ') : body.message || 'No se pudo devolver la actuación.');
       return;
     }
     await load();
+    setWorkingId('');
   }
 
   const stalePending = actions.filter((action) => {
@@ -273,8 +288,8 @@ export default function CoordinationActionsPage() {
       {!error && actions.some((action) => action.status === 'PENDING_VALIDATION') && (
         <div className="bulkBar">
           <span>{selected.length} seleccionadas</span>
-          <button className="primaryButton" disabled={!selected.length} onClick={() => void validateSelected()}>
-            Validar seleccionadas
+          <button className="primaryButton" disabled={!selected.length || bulkWorking || Boolean(workingId)} onClick={() => void validateSelected()}>
+            {bulkWorking ? 'Validando…' : 'Validar seleccionadas'}
           </button>
         </div>
       )}
@@ -345,8 +360,12 @@ export default function CoordinationActionsPage() {
                 <a className="secondaryButton" href={`/coordinacion/actuaciones/${action.id}`}>Ver historial</a>
                 {action.status === 'PENDING_VALIDATION' && (
                   <>
-                    <button className="primaryButton" onClick={() => void validate(action.id)}>Validar</button>
-                    <button className="secondaryButton" onClick={() => void returnAction(action.id)}>Devolver</button>
+                    <button className="primaryButton" disabled={Boolean(workingId) || bulkWorking} onClick={() => void validate(action.id)}>
+                      {workingId === action.id + ':validate' ? 'Validando…' : 'Validar'}
+                    </button>
+                    <button className="secondaryButton" disabled={Boolean(workingId) || bulkWorking} onClick={() => void returnAction(action.id)}>
+                      {workingId === action.id + ':return' ? 'Devolviendo…' : 'Devolver'}
+                    </button>
                   </>
                 )}
               </div>
