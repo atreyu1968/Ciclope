@@ -40,28 +40,37 @@ export default function AcademicYearsPage() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [working, setWorking] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   async function load() {
-    const [yearsResponse, usersResponse, networksResponse] = await Promise.all([
-      fetch('/api/academic-years'), fetch('/api/users'), fetch('/api/networks'),
-    ]);
-    if (yearsResponse.status === 401) {
-      router.push('/login');
-      return;
-    }
-    if (!yearsResponse.ok || !usersResponse.ok || !networksResponse.ok) {
+    setLoading(true);
+    try {
+      const [yearsResponse, usersResponse, networksResponse] = await Promise.all([
+        fetch('/api/academic-years'), fetch('/api/users'), fetch('/api/networks'),
+      ]);
+      if (yearsResponse.status === 401) {
+        router.push('/login');
+        return;
+      }
+      if (!yearsResponse.ok || !usersResponse.ok || !networksResponse.ok) {
+        setError('No se pudieron cargar los datos administrativos.');
+        return;
+      }
+      const [yearData, userData, networkData] = await Promise.all([
+        yearsResponse.json(), usersResponse.json(), networksResponse.json(),
+      ]);
+      setError('');
+      setYears(yearData);
+      setUsers(userData);
+      setNetworks(networkData);
+      if (!selectedYear) {
+        const active = yearData.find((item: Year) => item.isActive) ?? yearData[0];
+        setSelectedYear(active?.id ?? '');
+      }
+    } catch {
       setError('No se pudieron cargar los datos administrativos.');
-      return;
-    }
-    const [yearData, userData, networkData] = await Promise.all([
-      yearsResponse.json(), usersResponse.json(), networksResponse.json(),
-    ]);
-    setYears(yearData);
-    setUsers(userData);
-    setNetworks(networkData);
-    if (!selectedYear) {
-      const active = yearData.find((item: Year) => item.isActive) ?? yearData[0];
-      setSelectedYear(active?.id ?? '');
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -232,11 +241,23 @@ export default function AcademicYearsPage() {
 
       {message && <div className="notice">{message}</div>}
       {error && <div className="errorBox">{error}</div>}
+      {loading && !error && (
+        <div className="loadingState" role="status" aria-live="polite">
+          <span className="loadingSpinner" aria-hidden="true" />
+          <strong>Cargando cursos y coordinaciones…</strong>
+        </div>
+      )}
 
       <section className="adminGrid">
         <article className="panel">
           <h2>Cursos académicos</h2>
           <div className="yearList">
+            {!loading && !years.length && !error && (
+              <div className="emptyState">
+                <h3>No hay cursos académicos configurados</h3>
+                <p>Crea el primer curso y asigna sus coordinaciones antes de activarlo.</p>
+              </div>
+            )}
             {years.map((item) => (
               <button className={`yearRow ${selectedYear === item.id ? 'selected' : ''}`} key={item.id} onClick={() => setSelectedYear(item.id)}>
                 <span>
