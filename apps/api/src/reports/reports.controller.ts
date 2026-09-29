@@ -59,6 +59,7 @@ export class ReportsController {
       period: report.period,
       totals: report.totals,
       planProgress: report.planProgress,
+      transversalOverview: report.transversalOverview,
       networkInsights: report.networkInsights,
       alerts: report.alerts,
       byNetwork: report.byNetwork,
