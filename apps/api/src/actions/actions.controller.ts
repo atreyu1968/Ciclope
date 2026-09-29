@@ -51,8 +51,13 @@ export class ActionsController {
   findAll(
     @CurrentUser() user: AuthenticatedUser,
     @Query('status') status?: string,
+    @Query('networkId') networkId?: string,
+    @Query('familyId') familyId?: string,
+    @Query('teacherId') teacherId?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
   ) {
-    return this.actions.findAll(user, status);
+    return this.actions.findAll(user, status, networkId, familyId, teacherId, from, to);
   }
 
   @Patch('validate-batch')
