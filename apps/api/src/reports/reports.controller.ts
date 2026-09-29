@@ -33,8 +33,10 @@ export class ReportsController {
     @CurrentUser() user: AuthenticatedUser,
     @Query('academicYearId') academicYearId?: string,
     @Query('networkId') networkId?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
   ) {
-    return this.reports.summary(user, academicYearId, networkId);
+    return this.reports.summary(user, academicYearId, networkId, from, to);
   }
 
   @Post('interpret')
@@ -43,12 +45,15 @@ export class ReportsController {
     @Query('academicYearId') academicYearId?: string,
     @Query('networkId') networkId?: string,
     @Query('mode') mode?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
   ) {
-    const report = await this.reports.summary(user, academicYearId, networkId);
+    const report = await this.reports.summary(user, academicYearId, networkId, from, to);
     const safeReport = {
       center: report.center,
       academicYear: report.academicYear,
       network: report.network,
+      period: report.period,
       totals: report.totals,
       planProgress: report.planProgress,
       networkInsights: report.networkInsights,
@@ -69,8 +74,10 @@ export class ReportsController {
     @Res() response: Response,
     @Query('academicYearId') academicYearId?: string,
     @Query('networkId') networkId?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
   ) {
-    const csv = await this.reports.csv(user, academicYearId, networkId);
+    const csv = await this.reports.csv(user, academicYearId, networkId, from, to);
     response.setHeader('Content-Type', 'text/csv; charset=utf-8');
     response.setHeader('Content-Disposition', 'attachment; filename="ciclope-actuaciones.csv"');
     response.send(csv);
