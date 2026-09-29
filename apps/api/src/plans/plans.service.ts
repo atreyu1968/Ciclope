@@ -11,6 +11,7 @@ import { PrismaService } from '../database/prisma.service';
 import { CreateObjectiveDto } from './dto/create-objective.dto';
 import { CreatePlanDto } from './dto/create-plan.dto';
 import { CreateTaskDto } from './dto/create-task.dto';
+import { officialPlanDeadlines } from './official-deadlines.config';
 
 @Injectable()
 export class PlansService {
@@ -102,14 +103,36 @@ export class PlansService {
     });
     if (existing) throw new BadRequestException('Ya existe un plan para esa red y curso.');
 
+    const primaryCoordinator = await this.prisma.networkCoordinator.findFirst({
+      where: {
+        academicYearId: year.id,
+        networkId: network.id,
+        user: { active: true },
+      },
+      orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+      select: { userId: true },
+    });
+    const officialDeadlines = officialPlanDeadlines(year.name);
+
     return this.prisma.annualPlan.create({
       data: {
         academicYearId: year.id,
         networkId: network.id,
         title: dto.title?.trim() || `Plan anual de ${network.name} · ${year.name}`,
         summary: dto.summary?.trim() || null,
+        tasks: officialDeadlines.length
+          ? {
+              create: officialDeadlines.map((deadline) => ({
+                title: deadline.title,
+                description: deadline.description,
+                dueDate: new Date(deadline.dueDate),
+                ownerId: primaryCoordinator?.userId,
+                official: true,
+              })),
+            }
+          : undefined,
       },
-      include: { network: true, academicYear: true },
+      include: { network: true, academicYear: true, tasks: true },
     });
   }
 
