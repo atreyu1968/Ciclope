@@ -164,7 +164,7 @@ export default function EditActionPage() {
 
   if (!action) return (
     <main className="formShell">
-      {message ? <div className="errorBox">{message}</div> : (
+      {message ? <div className="errorBox" role="alert">{message}</div> : (
         <div className="loadingState" role="status" aria-live="polite">
           <span className="loadingSpinner" aria-hidden="true" />
           <strong>Cargando actuación…</strong>
@@ -176,7 +176,7 @@ export default function EditActionPage() {
   if (!['DRAFT', 'PENDING_VALIDATION'].includes(action.status)) {
     return (
       <main className="formShell">
-        <div className="notice">Esta actuación ya no puede editarse porque ha sido validada o devuelta para corrección.</div>
+        <div className="notice" role="status" aria-live="polite">Esta actuación ya no puede editarse porque ha sido validada o devuelta para corrección.</div>
         <a className="secondaryButton" href="/actuaciones/mis-actuaciones">Volver</a>
       </main>
     );
@@ -194,11 +194,11 @@ export default function EditActionPage() {
       </div>
 
       {action.status === 'PENDING_VALIDATION' && (
-        <div className="notice">
+        <div className="notice" role="status" aria-live="polite">
           Esta actuación está pendiente de coordinación. Si la guardas como borrador, dejará de aparecer en la bandeja de validación hasta que vuelvas a enviarla.
         </div>
       )}
-      {message && <div className="errorBox">{message}</div>}
+      {message && <div className="errorBox" role="alert">{message}</div>}
 
       <form className="actionForm" onSubmit={submit}>
         <fieldset>
