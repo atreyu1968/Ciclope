@@ -296,6 +296,7 @@ export default function CoordinationDashboardPage() {
       <section className="quickLinks">
         <a className="secondaryButton" href="/coordinacion/actuaciones">Actuaciones</a>
         <a className="secondaryButton" href="/coordinacion/planes">Planes anuales</a>
+        <a className="secondaryButton" href="/coordinacion/calendario">Calendario</a>
         <a className="secondaryButton" href="/coordinacion/comunicaciones">Comunicaciones enviadas</a>
         <a className="secondaryButton" href="/coordinacion/automatizaciones">Automatizaciones</a>
         <a className="secondaryButton" href="/coordinacion/buzon">Buzón del claustro</a>
