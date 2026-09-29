@@ -86,6 +86,7 @@ export default function HistoricalReportDetailPage() {
   const [message, setMessage] = useState('');
   const [narrativeDraft, setNarrativeDraft] = useState('');
   const [savingNarrative, setSavingNarrative] = useState(false);
+  const [changingStatus, setChangingStatus] = useState(false);
 
   useEffect(() => {
     fetch('/api/reports/snapshots/' + params.id).then(async (response) => {
@@ -131,7 +132,9 @@ export default function HistoricalReportDetailPage() {
 
   async function changeStatus(status: 'SAVED' | 'SUBMITTED') {
     if (!snapshot) return;
+    setChangingStatus(true);
     setMessage('');
+    setError('');
     const response = await fetch('/api/reports/snapshots/' + snapshot.id + '/status', {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
@@ -139,11 +142,13 @@ export default function HistoricalReportDetailPage() {
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
+      setChangingStatus(false);
       setError(Array.isArray(body.message) ? body.message.join(' ') : body.message || 'No se pudo actualizar el estado.');
       return;
     }
     setSnapshot((current) => current ? { ...current, ...body } : current);
     setMessage(status === 'SUBMITTED' ? 'Corte marcado como entregado.' : 'Corte reabierto.');
+    setChangingStatus(false);
   }
 
   if (error) {
@@ -155,7 +160,14 @@ export default function HistoricalReportDetailPage() {
     );
   }
 
-  if (!snapshot) return <main className="shell"><p>Cargando corte histórico…</p></main>;
+  if (!snapshot) return (
+    <main className="shell">
+      <div className="loadingState" role="status" aria-live="polite">
+        <span className="loadingSpinner" aria-hidden="true" />
+        <strong>Cargando corte histórico…</strong>
+      </div>
+    </main>
+  );
 
   const report = snapshot.data;
 
@@ -169,9 +181,13 @@ export default function HistoricalReportDetailPage() {
         </div>
         <div className="rowActions">
           {snapshot.status === 'SAVED' ? (
-            <button className="secondaryButton" onClick={() => void changeStatus('SUBMITTED')}>Marcar entregado</button>
+            <button className="secondaryButton" disabled={changingStatus || savingNarrative} onClick={() => void changeStatus('SUBMITTED')}>
+              {changingStatus ? 'Actualizando…' : 'Marcar entregado'}
+            </button>
           ) : (
-            <button className="secondaryButton" onClick={() => void changeStatus('SAVED')}>Reabrir</button>
+            <button className="secondaryButton" disabled={changingStatus || savingNarrative} onClick={() => void changeStatus('SAVED')}>
+              {changingStatus ? 'Actualizando…' : 'Reabrir'}
+            </button>
           )}
           <button className="primaryButton" onClick={() => window.print()}>Imprimir / guardar PDF</button>
           <a className="secondaryButton" href="/informes/historico">Volver</a>
