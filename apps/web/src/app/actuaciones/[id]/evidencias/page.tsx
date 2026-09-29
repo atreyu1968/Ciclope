@@ -25,6 +25,7 @@ export default function ActionEvidencePage() {
   const [action, setAction] = useState<Action | null>(null);
   const [items, setItems] = useState<Evidence[]>([]);
   const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
   const [uploading, setUploading] = useState(false);
   const [addingLink, setAddingLink] = useState(false);
   const [workingId, setWorkingId] = useState('');
@@ -42,13 +43,13 @@ export default function ActionEvidencePage() {
         return;
       }
       if (!actionResponse.ok || !evidenceResponse.ok) {
-        setMessage('No se pudieron cargar las evidencias.');
+        setError('No se pudieron cargar las evidencias.');
         return;
       }
       setAction(await actionResponse.json());
       setItems(await evidenceResponse.json());
     } catch {
-      setMessage('No se pudieron cargar las evidencias.');
+      setError('No se pudieron cargar las evidencias.');
     } finally {
       setLoading(false);
     }
@@ -60,6 +61,7 @@ export default function ActionEvidencePage() {
     event.preventDefault();
     setUploading(true);
     setMessage('');
+    setError('');
     const form = new FormData(event.currentTarget);
     const response = await fetch(`/api/evidence/action/${params.id}/file`, {
       method: 'POST',
@@ -68,7 +70,7 @@ export default function ActionEvidencePage() {
     const body = await response.json().catch(() => ({}));
     setUploading(false);
     if (!response.ok) {
-      setMessage(body.message || 'No se pudo subir el archivo.');
+      setError(body.message || 'No se pudo subir el archivo.');
       return;
     }
     event.currentTarget.reset();
@@ -80,6 +82,7 @@ export default function ActionEvidencePage() {
     event.preventDefault();
     setAddingLink(true);
     setMessage('');
+    setError('');
     const form = new FormData(event.currentTarget);
     const response = await fetch(`/api/evidence/action/${params.id}/link`, {
       method: 'POST',
@@ -92,7 +95,7 @@ export default function ActionEvidencePage() {
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
       setAddingLink(false);
-      setMessage(Array.isArray(body.message) ? body.message.join(' ') : body.message || 'No se pudo añadir el enlace.');
+      setError(Array.isArray(body.message) ? body.message.join(' ') : body.message || 'No se pudo añadir el enlace.');
       return;
     }
     event.currentTarget.reset();
@@ -107,11 +110,12 @@ export default function ActionEvidencePage() {
     }
     setWorkingId(item.id);
     setMessage('');
+    setError('');
     const response = await fetch(`/api/evidence/${item.id}`, { method: 'DELETE' });
     const body = await response.json().catch(() => ({}));
     setWorkingId('');
     if (!response.ok) {
-      setMessage(Array.isArray(body?.message) ? body.message.join(' ') : body?.message || 'No se pudo eliminar la evidencia.');
+      setError(Array.isArray(body?.message) ? body.message.join(' ') : body?.message || 'No se pudo eliminar la evidencia.');
       return;
     }
     setMessage('Evidencia eliminada.');
@@ -129,7 +133,8 @@ export default function ActionEvidencePage() {
         <a className="secondaryButton" href="/actuaciones/mis-actuaciones">Mis actuaciones</a>
       </div>
 
-      {message && <div className="notice">{message}</div>}
+      {message && <div className="notice" role="status" aria-live="polite">{message}</div>}
+      {error && <div className="errorBox" role="alert">{error}</div>}
       {loading && (
         <div className="loadingState" role="status" aria-live="polite">
           <span className="loadingSpinner" aria-hidden="true" />
