@@ -96,7 +96,7 @@
 - [x] Guardado como borrador por el docente.
 - [x] Edición antes de validación.
 - [x] Duplicar una actuación recurrente.
-- [ ] Formulario optimizado para móvil.
+- [x] Formulario optimizado para móvil.
 - [x] Confirmación clara y número/referencia tras registrar.
 
 ## 7. Validación por coordinación
