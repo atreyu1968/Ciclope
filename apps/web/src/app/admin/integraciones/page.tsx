@@ -126,7 +126,7 @@ export default function IntegrationsAdminPage() {
   if (!settings) {
     return (
       <main className="shell">
-        {error ? <div className="errorBox">{error}</div> : (
+        {error ? <div className="errorBox" role="alert">{error}</div> : (
           <div className="loadingState" role="status" aria-live="polite">
             <span className="loadingSpinner" aria-hidden="true" />
             <strong>{loading ? 'Cargando integraciones…' : 'Preparando configuración…'}</strong>
@@ -149,8 +149,8 @@ export default function IntegrationsAdminPage() {
         <a className="secondaryButton" href="/">Volver</a>
       </div>
 
-      {message && <div className="notice">{message}</div>}
-      {error && <div className="errorBox">{error}</div>}
+      {message && <div className="notice" role="status" aria-live="polite">{message}</div>}
+      {error && <div className="errorBox" role="alert">{error}</div>}
 
       <section className="adminGrid">
         <article className="panel">
