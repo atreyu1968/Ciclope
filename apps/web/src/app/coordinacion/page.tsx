@@ -15,7 +15,26 @@ type DashboardData = {
   communicationFollowups: number;
   savedReportSnapshots: number;
   estimatedMinutes: number;
-  focus: Array<{ key: string; priority: string; title: string; href: string }>;
+  agendaMinutes: number;
+  deferredPriorityCount: number;
+  agenda: Array<{
+    key: string;
+    priority: string;
+    title: string;
+    href: string;
+    reason: string;
+    estimatedMinutes: number;
+    allocatedMinutes: number;
+    order: number;
+  }>;
+  focus: Array<{
+    key: string;
+    priority: string;
+    title: string;
+    href: string;
+    reason: string;
+    estimatedMinutes: number;
+  }>;
 };
 
 export default function CoordinationDashboardPage() {
@@ -69,6 +88,43 @@ export default function CoordinationDashboardPage() {
         <span className={data.estimatedMinutes <= 60 ? 'badge success' : 'badge dangerBadge'}>
           {data.estimatedMinutes <= 60 ? 'Dentro de la hora semanal' : 'Carga superior a una hora'}
         </span>
+      </section>
+
+      <section className="panel">
+        <div className="panelHeader">
+          <div>
+            <p className="eyebrow">Agenda priorizada</p>
+            <h2>Plan recomendado para tu hora semanal</h2>
+          </div>
+          <span className="badge success">{data.agendaMinutes} min planificados</span>
+        </div>
+        {data.agenda.length ? (
+          <>
+            <div className="assignmentList">
+              {data.agenda.map((item) => (
+                <a className="assignmentRow" key={item.key} href={item.href}>
+                  <div>
+                    <strong>{item.order}. {item.title}</strong>
+                    <span>{item.reason}</span>
+                  </div>
+                  <span className={item.priority === 'high' ? 'badge dangerBadge' : item.priority === 'medium' ? 'badge warningChip' : 'badge'}>
+                    {item.allocatedMinutes} min
+                  </span>
+                </a>
+              ))}
+            </div>
+            {data.deferredPriorityCount > 0 && (
+              <p className="reportNote">
+                Quedan {data.deferredPriorityCount} asuntos de menor prioridad fuera de esta hora. Se mantienen visibles en «Requiere tu atención» para la siguiente sesión o para un hueco adicional.
+              </p>
+            )}
+          </>
+        ) : (
+          <div className="successBox">
+            <h3>No necesitas consumir la hora completa</h3>
+            <p>No hay asuntos pendientes que requieran intervención en este momento.</p>
+          </div>
+        )}
       </section>
 
       <section className="statsGrid">
