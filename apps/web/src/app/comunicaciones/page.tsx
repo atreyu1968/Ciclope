@@ -31,6 +31,7 @@ export default function CommunicationsInboxPage() {
   const [items, setItems] = useState<InboxItem[]>([]);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [workingId, setWorkingId] = useState('');
 
   async function load() {
     setLoading(true);
@@ -56,19 +57,23 @@ export default function CommunicationsInboxPage() {
   useEffect(() => { void load(); }, []);
 
   async function read(id: string) {
+    setWorkingId(id + ':read');
     await fetch(`/api/communications/${id}/read`, { method: 'PATCH' });
     await load();
+    setWorkingId('');
   }
 
   async function respond(id: string) {
     const responseText = window.prompt('Escribe tu respuesta:');
     if (!responseText) return;
+    setWorkingId(id + ':respond');
     const response = await fetch(`/api/communications/${id}/respond`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ response: responseText }),
     });
     if (response.ok) await load();
+    setWorkingId('');
   }
 
   return (
@@ -128,8 +133,16 @@ export default function CommunicationsInboxPage() {
                 {item.responseText && <div className="responseBox"><strong>Tu respuesta</strong><p>{item.responseText}</p></div>}
               </div>
               <div className="queueActions">
-                {!item.readAt && <button className="secondaryButton" onClick={() => read(communication.id)}>Marcar leída</button>}
-                {communication.responseRequired && !item.respondedAt && <button className="primaryButton" onClick={() => respond(communication.id)}>Responder</button>}
+                {!item.readAt && (
+                  <button className="secondaryButton" disabled={Boolean(workingId)} onClick={() => read(communication.id)}>
+                    {workingId === communication.id + ':read' ? 'Marcando…' : 'Marcar leída'}
+                  </button>
+                )}
+                {communication.responseRequired && !item.respondedAt && (
+                  <button className="primaryButton" disabled={Boolean(workingId)} onClick={() => respond(communication.id)}>
+                    {workingId === communication.id + ':respond' ? 'Enviando…' : 'Responder'}
+                  </button>
+                )}
               </div>
             </article>
           );
