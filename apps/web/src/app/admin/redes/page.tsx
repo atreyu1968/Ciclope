@@ -28,8 +28,10 @@ export default function NetworkInstitutionalAdminPage() {
   const [busy, setBusy] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
 
   async function load() {
+    setLoading(true);
     const response = await fetch('/api/networks');
     if (response.status === 401) {
       router.push('/login');
@@ -42,9 +44,11 @@ export default function NetworkInstitutionalAdminPage() {
     const body = await response.json().catch(() => ([]));
     if (!response.ok) {
       setError(messageFrom(body, 'No se pudo cargar la configuración de redes.'));
+      setLoading(false);
       return;
     }
 
+    setError('');
     const loaded = body as Network[];
     setNetworks(loaded);
     setDrafts(Object.fromEntries(loaded.map((network) => [
@@ -54,6 +58,7 @@ export default function NetworkInstitutionalAdminPage() {
         objectives: (network.institutionalObjectives || []).join('\n'),
       },
     ])));
+    setLoading(false);
   }
 
   useEffect(() => { void load(); }, []);
@@ -117,6 +122,12 @@ export default function NetworkInstitutionalAdminPage() {
 
       {message && <div className="notice">{message}</div>}
       {error && <div className="errorBox">{error}</div>}
+      {loading && !error && (
+        <div className="loadingState" role="status" aria-live="polite">
+          <span className="loadingSpinner" aria-hidden="true" />
+          <strong>Cargando configuración institucional de las redes…</strong>
+        </div>
+      )}
 
       <section className="networkAdminGrid">
         {networks.map((network) => {
@@ -164,8 +175,11 @@ export default function NetworkInstitutionalAdminPage() {
         })}
       </section>
 
-      {!networks.length && !error && (
-        <section className="panel"><p className="empty">No hay redes activas disponibles.</p></section>
+      {!loading && !networks.length && !error && (
+        <section className="emptyState">
+          <h2>No hay redes activas disponibles</h2>
+          <p>La configuración institucional aparecerá aquí cuando existan redes habilitadas para el centro.</p>
+        </section>
       )}
     </main>
   );
