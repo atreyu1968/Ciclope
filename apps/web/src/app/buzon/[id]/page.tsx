@@ -77,7 +77,7 @@ export default function StaffRequestDetailPage() {
 
   if (!request) return (
     <main className="shell">
-      {error ? <div className="errorBox">{error}</div> : (
+      {error ? <div className="errorBox" role="alert">{error}</div> : (
         <div className="loadingState" role="status" aria-live="polite">
           <span className="loadingSpinner" aria-hidden="true" />
           <strong>Cargando conversación…</strong>
@@ -99,7 +99,7 @@ export default function StaffRequestDetailPage() {
         <a className="secondaryButton" href={request.submittedBy.id === me?.id ? '/buzon' : '/coordinacion/buzon'}>Volver</a>
       </div>
 
-      {error && <div className="errorBox">{error}</div>}
+      {error && <div className="errorBox" role="alert">{error}</div>}
 
       <section className="conversation">
         {request.messages.map((message) => {
