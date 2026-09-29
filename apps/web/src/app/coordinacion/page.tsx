@@ -13,6 +13,7 @@ type DashboardData = {
   returnedOwnActions: number;
   unreadCommunications: number;
   communicationFollowups: number;
+  savedReportSnapshots: number;
   estimatedMinutes: number;
   focus: Array<{ key: string; priority: string; title: string; href: string }>;
 };
@@ -76,6 +77,7 @@ export default function CoordinationDashboardPage() {
         <article className="statCard"><strong>{data.overduePlanTasks}</strong><span>tareas del plan vencidas</span></article>
         <article className="statCard"><strong>{data.openStaffRequests}</strong><span>consultas del claustro abiertas</span></article>
         <article className="statCard"><strong>{data.communicationFollowups}</strong><span>comunicaciones con pendientes</span></article>
+        <article className="statCard"><strong>{data.savedReportSnapshots}</strong><span>informes guardados sin entregar</span></article>
         <article className="statCard"><strong>{data.unreadCommunications}</strong><span>mensajes sin leer</span></article>
         <article className="statCard"><strong>{data.returnedOwnActions}</strong><span>actuaciones tuyas devueltas</span></article>
       </section>
@@ -110,6 +112,7 @@ export default function CoordinationDashboardPage() {
         <a className="secondaryButton" href="/comunicaciones/nueva">Publicar comunicación</a>
         <a className="secondaryButton" href="/actuaciones/nueva">Registrar actuación</a>
         <a className="secondaryButton" href="/informes">Indicadores e informes</a>
+        <a className="secondaryButton" href="/informes/historico">Histórico de informes</a>
       </section>
     </main>
   );
