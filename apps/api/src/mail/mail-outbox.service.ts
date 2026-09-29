@@ -8,6 +8,8 @@ type Recipient = {
   email: string;
 };
 
+type MailPreference = 'general' | 'reminder' | 'weekly';
+
 @Injectable()
 export class MailOutboxService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(MailOutboxService.name);
@@ -34,6 +36,28 @@ export class MailOutboxService implements OnModuleInit, OnModuleDestroy {
     return Boolean(await this.integrations.resendConfig(centerId));
   }
 
+  private async filterRecipientsByPreference(
+    recipients: Recipient[],
+    preference: MailPreference,
+  ) {
+    const unique = [...new Map(recipients.map((recipient) => [recipient.id, recipient])).values()];
+    if (!unique.length) return [];
+
+    const allowed = await this.prisma.user.findMany({
+      where: {
+        id: { in: unique.map((recipient) => recipient.id) },
+        active: true,
+        emailNotifications: true,
+        ...(preference === 'reminder' ? { reminderEmails: true } : {}),
+        ...(preference === 'weekly' ? { weeklySummaryEmail: true } : {}),
+      },
+      select: { id: true },
+    });
+    const allowedIds = new Set(allowed.map((user) => user.id));
+    return unique.filter((recipient) => allowedIds.has(recipient.id));
+  }
+
+
   private async recoverInterruptedJobs() {
     const cutoff = new Date(Date.now() - 10 * 60 * 1000);
     await this.prisma.emailOutbox.updateMany({
@@ -53,10 +77,11 @@ export class MailOutboxService implements OnModuleInit, OnModuleDestroy {
     subject: string,
     textBody: string,
     recipients: Recipient[],
+    preference: MailPreference = 'general',
   ) {
     if (!(await this.isConfigured(centerId))) return { queued: 0, configured: false };
 
-    const uniqueRecipients = [...new Map(recipients.map((recipient) => [recipient.id, recipient])).values()];
+    const uniqueRecipients = await this.filterRecipientsByPreference(recipients, preference);
     if (!uniqueRecipients.length) return { queued: 0, configured: true };
 
     await this.prisma.emailOutbox.createMany({
@@ -78,8 +103,11 @@ export class MailOutboxService implements OnModuleInit, OnModuleDestroy {
     subject: string,
     textBody: string,
     recipient: Recipient,
+    preference: MailPreference = 'general',
   ) {
     if (!(await this.isConfigured(centerId))) return { queued: 0, configured: false };
+    const allowed = await this.filterRecipientsByPreference([recipient], preference);
+    if (!allowed.length) return { queued: 0, configured: true };
 
     const result = await this.prisma.emailOutbox.createMany({
       data: [{
@@ -105,7 +133,8 @@ export class MailOutboxService implements OnModuleInit, OnModuleDestroy {
     prefix = 'CÍCLOPE FP',
   ) {
     if (!(await this.isConfigured(centerId))) return { queued: 0, configured: false };
-    if (!recipients.length) return { queued: 0, configured: true };
+    const allowedRecipients = await this.filterRecipientsByPreference(recipients, 'general');
+    if (!allowedRecipients.length) return { queued: 0, configured: true };
 
     const appUrl = process.env.APP_BASE_URL?.replace(/\/$/, '');
     const footer = appUrl
@@ -113,7 +142,7 @@ export class MailOutboxService implements OnModuleInit, OnModuleDestroy {
       : '';
 
     await this.prisma.emailOutbox.createMany({
-      data: recipients.map((recipient) => ({
+      data: allowedRecipients.map((recipient) => ({
         communicationId,
         userId: recipient.id,
         recipientEmail: recipient.email,
@@ -123,7 +152,7 @@ export class MailOutboxService implements OnModuleInit, OnModuleDestroy {
     });
 
     void this.processBatch();
-    return { queued: recipients.length, configured: true };
+    return { queued: allowedRecipients.length, configured: true };
   }
 
   async processBatch() {
