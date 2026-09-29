@@ -53,8 +53,11 @@ export class AuthController {
   }
 
   @Post('password-reset/request')
-  requestPasswordReset(@Body() dto: RequestPasswordResetDto) {
-    return this.auth.requestPasswordReset(dto.email);
+  requestPasswordReset(
+    @Body() dto: RequestPasswordResetDto,
+    @Req() request: Request,
+  ) {
+    return this.auth.requestPasswordReset(dto.email, clientKey(request));
   }
 
   @Post('password-reset/confirm')
