@@ -39,3 +39,5 @@
 
 .officialMilestones{display:grid;gap:8px;margin:14px 0}.officialMilestones>div{display:flex;justify-content:space-between;gap:18px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fbfcfd}.officialMilestones span{color:var(--muted);font-size:.82rem;text-align:right}
 @media(max-width:640px){.officialMilestones>div{display:grid}.officialMilestones span{text-align:left}}
+
+.reportPeriodRow{margin-top:14px}.reportPeriodActions{margin-top:10px;justify-content:space-between}.reportPeriodActions .textButton{color:var(--institutional)}
