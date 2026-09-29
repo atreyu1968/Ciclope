@@ -75,7 +75,16 @@ export default function StaffRequestDetailPage() {
     await load();
   }
 
-  if (!request) return <main className="shell"><p>{error || 'Cargando conversación…'}</p></main>;
+  if (!request) return (
+    <main className="shell">
+      {error ? <div className="errorBox">{error}</div> : (
+        <div className="loadingState" role="status" aria-live="polite">
+          <span className="loadingSpinner" aria-hidden="true" />
+          <strong>Cargando conversación…</strong>
+        </div>
+      )}
+    </main>
+  );
 
   return (
     <main className="shell conversationShell">
