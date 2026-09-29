@@ -120,8 +120,8 @@ export default function NetworkInstitutionalAdminPage() {
         <a className="secondaryButton" href="/admin">Volver a Administración</a>
       </div>
 
-      {message && <div className="notice">{message}</div>}
-      {error && <div className="errorBox">{error}</div>}
+      {message && <div className="notice" role="status" aria-live="polite">{message}</div>}
+      {error && <div className="errorBox" role="alert">{error}</div>}
       {loading && !error && (
         <div className="loadingState" role="status" aria-live="polite">
           <span className="loadingSpinner" aria-hidden="true" />
