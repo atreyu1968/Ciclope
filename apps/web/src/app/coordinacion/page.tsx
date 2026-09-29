@@ -7,6 +7,7 @@ type DashboardData = {
   activeYear: { id: string; name: string } | null;
   coordinationNetworks: Array<{ id: string; name: string }>;
   pendingActions: number;
+  stalePendingActions: number;
   validatedWithoutEvidence: number;
   overduePlanTasks: number;
   priorityPlanTasks: Array<{
@@ -224,6 +225,7 @@ export default function CoordinationDashboardPage() {
 
       <section className="statsGrid">
         <article className="statCard"><strong>{data.pendingActions}</strong><span>actuaciones por validar</span></article>
+        <article className="statCard"><strong>{data.stalePendingActions}</strong><span>pendientes desde hace más de 7 días</span></article>
         <article className="statCard"><strong>{data.validatedWithoutEvidence}</strong><span>validadas sin evidencia</span></article>
         <article className="statCard"><strong>{data.overduePlanTasks}</strong><span>tareas del plan vencidas</span></article>
         <article className="statCard"><strong>{data.openStaffRequests}</strong><span>consultas del claustro abiertas</span></article>
