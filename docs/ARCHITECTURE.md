@@ -31,3 +31,29 @@ Los permisos de coordinación se calculan en cada sesión a partir de las asigna
 ## Flujo de actuación
 
 Profesorado autenticado → actuación asociada al curso activo → PENDING_VALIDATION → bandeja de la coordinación correspondiente → VALIDATED o RETURNED.
+
+
+## Evidencias e indicadores
+
+Las evidencias se asocian a una actuación y pueden ser archivos o enlaces. Los informes se calculan siempre sobre actuaciones validadas y muestran:
+
+- actuaciones con y sin evidencia;
+- cobertura documental porcentual;
+- número de archivos y enlaces;
+- evidencias por red;
+- avance automático de objetivos medibles del plan anual.
+
+Una evidencia añadida a una actuación validada modifica de forma inmediata los indicadores y, cuando el objetivo utiliza la métrica `EVIDENCE`, su grado de avance.
+
+## Planificación anual
+
+Existe un único plan por combinación `AcademicYear + Network`. Los coordinadores autorizados pueden:
+
+- crear y activar el plan;
+- definir objetivos cualitativos o con métrica automática;
+- vincular actuaciones a objetivos;
+- crear tareas, responsables y fechas límite;
+- consultar el avance sin transcribir datos.
+
+Las métricas automáticas disponibles son actuaciones validadas, participaciones de alumnado, horas registradas y evidencias.
+El dashboard destaca tareas vencidas y actuaciones validadas sin evidencia para concentrar la hora semanal de coordinación en excepciones.
