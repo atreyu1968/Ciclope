@@ -31,22 +31,31 @@ export default function FacultyAdminPage() {
   const [temporaryPassword, setTemporaryPassword] = useState('');
   const [temporaryPasswordFor, setTemporaryPasswordFor] = useState('');
   const [workingId, setWorkingId] = useState('');
+  const [loading, setLoading] = useState(true);
 
   async function load() {
-    const [usersResponse, familiesResponse] = await Promise.all([
-      fetch('/api/users'),
-      fetch('/api/structure/families'),
-    ]);
-    if (usersResponse.status === 401 || familiesResponse.status === 401) {
-      router.push('/login');
-      return;
-    }
-    if (!usersResponse.ok || !familiesResponse.ok) {
+    setLoading(true);
+    try {
+      const [usersResponse, familiesResponse] = await Promise.all([
+        fetch('/api/users'),
+        fetch('/api/structure/families'),
+      ]);
+      if (usersResponse.status === 401 || familiesResponse.status === 401) {
+        router.push('/login');
+        return;
+      }
+      if (!usersResponse.ok || !familiesResponse.ok) {
+        setError('No se pudo cargar el profesorado o las familias profesionales.');
+        return;
+      }
+      setError('');
+      setUsers(await usersResponse.json());
+      setFamilies(await familiesResponse.json());
+    } catch {
       setError('No se pudo cargar el profesorado o las familias profesionales.');
-      return;
+    } finally {
+      setLoading(false);
     }
-    setUsers(await usersResponse.json());
-    setFamilies(await familiesResponse.json());
   }
 
   useEffect(() => { void load(); }, []);
@@ -160,6 +169,12 @@ export default function FacultyAdminPage() {
 
       {message && <div className="notice">{message}</div>}
       {error && <div className="errorBox">{error}</div>}
+      {loading && !error && (
+        <div className="loadingState" role="status" aria-live="polite">
+          <span className="loadingSpinner" aria-hidden="true" />
+          <strong>Cargando directorio de profesorado…</strong>
+        </div>
+      )}
       {temporaryPassword && (
         <div className="successBox">
           <strong>Contraseña temporal de {temporaryPasswordFor}</strong>
@@ -196,6 +211,13 @@ export default function FacultyAdminPage() {
 
       <section className="panel">
         <div className="assignmentList">
+          {!loading && !users.length && !error && (
+            <div className="emptyState">
+              <h2>No hay profesorado registrado</h2>
+              <p>Puedes crear la primera cuenta manualmente o importar el directorio desde un CSV.</p>
+              <div className="rowActions"><a className="secondaryButton" href="/admin/profesorado/importar">Importar CSV</a></div>
+            </div>
+          )}
           {users.map((user) => {
             const assignedFamilies = new Set(user.professionalFamilies.map((item) => item.professionalFamily.id));
             return (
