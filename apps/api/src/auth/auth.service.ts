@@ -194,7 +194,7 @@ export class AuthService {
       await tx.auditLog.create({
         data: {
           centerId: user.centerId,
-          actorId: user.id,
+          actorId: null,
           action: 'PASSWORD_RESET_REQUESTED',
           entityType: 'User',
           entityId: user.id,
