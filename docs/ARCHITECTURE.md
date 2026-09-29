@@ -57,3 +57,15 @@ Existe un único plan por combinación `AcademicYear + Network`. Los coordinador
 
 Las métricas automáticas disponibles son actuaciones validadas, participaciones de alumnado, horas registradas y evidencias.
 El dashboard destaca tareas vencidas y actuaciones validadas sin evidencia para concentrar la hora semanal de coordinación en excepciones.
+
+
+## Automatizaciones internas
+
+La API ejecuta un ciclo ligero de automatizaciones sin cron externo ni contenedores. Con SMTP configurado:
+
+- avisa una sola vez cuando una tarea asignada se aproxima a su fecha límite;
+- avisa una sola vez cuando una tarea asignada queda vencida;
+- recuerda respuestas obligatorias antes del plazo de una comunicación;
+- emite un único aviso adicional si el plazo vence sin respuesta.
+
+La cola `EmailOutbox` utiliza `dedupeKey` para garantizar idempotencia: un reinicio de la API o una ejecución repetida no duplica el mismo recordatorio.
