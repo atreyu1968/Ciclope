@@ -4,6 +4,7 @@ import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { SessionGuard } from '../auth/session.guard';
 import type { AuthenticatedUser } from '../auth/auth.types';
+import { CONTENT_WRITE_ROLES } from '../auth/role-policy';
 import { ActionsService } from './actions.service';
 import { CreateActionDto } from './dto/create-action.dto';
 import { ReturnActionDto } from './dto/return-action.dto';
@@ -27,6 +28,7 @@ export class ActionsController {
   constructor(private readonly actions: ActionsService) {}
 
   @Post()
+  @Roles(...CONTENT_WRITE_ROLES)
   create(@Body() dto: CreateActionDto, @CurrentUser() user: AuthenticatedUser) {
     return this.actions.create(dto, user);
   }
@@ -73,6 +75,7 @@ export class ActionsController {
   }
 
   @Patch(':id/resubmit')
+  @Roles(...CONTENT_WRITE_ROLES)
   resubmit(
     @Param('id') id: string,
     @Body() dto: ResubmitActionDto,
@@ -82,6 +85,7 @@ export class ActionsController {
   }
 
   @Patch(':id')
+  @Roles(...CONTENT_WRITE_ROLES)
   updateBeforeValidation(
     @Param('id') id: string,
     @Body() dto: CreateActionDto,
@@ -91,6 +95,7 @@ export class ActionsController {
   }
 
   @Post(':id/duplicate')
+  @Roles(...CONTENT_WRITE_ROLES)
   duplicate(
     @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
