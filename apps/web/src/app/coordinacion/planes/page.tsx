@@ -3,7 +3,12 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-type Network = { id: string; name: string };
+type Network = {
+  id: string;
+  name: string;
+  description?: string | null;
+  institutionalObjectives?: string[];
+};
 type User = { id: string; firstName: string; lastName: string; email: string };
 type Me = { roles: string[] };
 type Milestone = {
@@ -122,36 +127,46 @@ export default function AnnualPlansPage() {
     setLoading(true);
     setError('');
     try {
-      const [plansResponse, usersResponse, dashboardResponse, meResponse, milestonesResponse] = await Promise.all([
+      const [plansResponse, usersResponse, dashboardResponse, meResponse, milestonesResponse, networksResponse] = await Promise.all([
         fetch('/api/plans'),
         fetch('/api/users'),
         fetch('/api/dashboard/me'),
         fetch('/api/auth/me'),
         fetch('/api/plans/milestones'),
+        fetch('/api/networks'),
       ]);
-      if ([plansResponse, usersResponse, dashboardResponse, meResponse, milestonesResponse].some((response) => response.status === 401)) {
+      if ([plansResponse, usersResponse, dashboardResponse, meResponse, milestonesResponse, networksResponse].some((response) => response.status === 401)) {
         router.push('/login');
         return;
       }
-      const [planBody, userBody, dashboardBody, meBody, milestoneBody] = await Promise.all([
+      const [planBody, userBody, dashboardBody, meBody, milestoneBody, networkBody] = await Promise.all([
         plansResponse.json().catch(() => ([])),
         usersResponse.json().catch(() => ([])),
         dashboardResponse.json().catch(() => ({})),
         meResponse.json().catch(() => ({})),
         milestonesResponse.json().catch(() => ([])),
+        networksResponse.json().catch(() => ([])),
       ]);
       if (!plansResponse.ok) throw new Error(messageFrom(planBody, 'No se pudieron cargar los planes.'));
       if (!usersResponse.ok) throw new Error(messageFrom(userBody, 'No se pudo cargar el profesorado.'));
       if (!dashboardResponse.ok) throw new Error(messageFrom(dashboardBody, 'No se pudieron cargar tus coordinaciones.'));
       if (!meResponse.ok) throw new Error(messageFrom(meBody, 'No se pudo cargar tu sesión.'));
       if (!milestonesResponse.ok) throw new Error(messageFrom(milestoneBody, 'No se pudieron cargar los hitos del curso.'));
+      if (!networksResponse.ok) throw new Error(messageFrom(networkBody, 'No se pudo cargar la configuración institucional de las redes.'));
 
       const loadedPlans = planBody as PlanListItem[];
       setPlans(loadedPlans);
       setUsers(userBody as User[]);
       setMe(meBody as Me);
       setMilestones(milestoneBody as Milestone[]);
-      setNetworks((dashboardBody.coordinationNetworks || []) as Network[]);
+      const configuredNetworks = networkBody as Network[];
+      const configuredById = new Map(configuredNetworks.map((network) => [network.id, network]));
+      setNetworks(
+        ((dashboardBody.coordinationNetworks || []) as Network[]).map((network) => ({
+          ...network,
+          ...(configuredById.get(network.id) || {}),
+        })),
+      );
       setSelectedId((current) =>
         current && loadedPlans.some((item) => item.id === current) ? current : loadedPlans[0]?.id || '',
       );
@@ -191,6 +206,10 @@ export default function AnnualPlansPage() {
     () => networks.filter((network) => !plans.some((plan) => plan.network.id === network.id)),
     [networks, plans],
   );
+
+  const institutionalNetwork = detail
+    ? networks.find((network) => network.id === detail.network.id)
+    : undefined;
 
   async function proposePlanWork() {
     if (!detail) return;
@@ -484,6 +503,36 @@ export default function AnnualPlansPage() {
                   </label>
                 </div>
               </article>
+
+              {institutionalNetwork && (
+                institutionalNetwork.description ||
+                (institutionalNetwork.institutionalObjectives?.length ?? 0) > 0
+              ) && (
+                <article className="panel institutionalReference">
+                  <div className="panelHeader">
+                    <div>
+                      <p className="eyebrow">Referencia institucional del centro</p>
+                      <h2>Marco de {detail.network.name}</h2>
+                    </div>
+                  </div>
+                  {institutionalNetwork.description && (
+                    <p className="preLine">{institutionalNetwork.description}</p>
+                  )}
+                  {(institutionalNetwork.institutionalObjectives?.length ?? 0) > 0 && (
+                    <div className="institutionalObjectives">
+                      <strong>Objetivos y líneas de referencia</strong>
+                      <ul>
+                        {institutionalNetwork.institutionalObjectives!.map((objective, index) => (
+                          <li key={index}>{objective}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  <p className="reportNote">
+                    Estas líneas son orientativas para redactar el plan. Los objetivos operativos del curso se crean y evalúan de forma independiente.
+                  </p>
+                </article>
+              )}
 
               <article className="panel aiAssistBox">
                 <div className="panelHeader">
