@@ -142,7 +142,7 @@
 - [x] Vista de entregas/fallos de correo para coordinación.
 - [x] Reenvío manual de mensajes fallidos.
 - [ ] Adjuntos en comunicaciones cuando sean necesarios.
-- [ ] Preferencias básicas de notificación por usuario.
+- [x] Preferencias básicas de notificación por usuario.
 
 ## 10. Planificación y «mi hora de coordinación»
 
