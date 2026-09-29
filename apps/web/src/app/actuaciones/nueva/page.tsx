@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 type Network = { id: string; name: string; code: string };
@@ -40,6 +40,8 @@ export default function NewActionPage() {
   const [selectedObjectives, setSelectedObjectives] = useState<string[]>([]);
   const [state, setState] = useState<'loading'|'idle'|'sending'|'sent'|'error'>('loading');
   const [createdActionId, setCreatedActionId] = useState<string | null>(null);
+  const [createdStatus, setCreatedStatus] = useState<string | null>(null);
+  const intentRef = useRef<'draft' | 'submit'>('submit');
 
   useEffect(() => {
     Promise.all([
@@ -98,11 +100,13 @@ export default function NewActionPage() {
             .filter((network) => selected.includes(network.id))
             .map((network) => [network.code, networkDetails[network.code] || {}]),
         ),
+        saveAsDraft: intentRef.current === 'draft',
       }),
     });
     if (response.ok) {
       const created = await response.json();
       setCreatedActionId(created.id);
+      setCreatedStatus(created.status);
       setState('sent');
       event.currentTarget.reset();
     } else {
@@ -166,11 +170,17 @@ export default function NewActionPage() {
         <div className="errorBox">No hay un curso académico activo. La administración debe activarlo antes de registrar actuaciones.</div>
       ) : state === 'sent' ? (
         <div className="successBox">
-          <h2>Actuación enviada</h2>
-          <p>Ha quedado registrada y pendiente de validación por la coordinación correspondiente.</p>
+          <h2>{createdStatus === 'DRAFT' ? 'Borrador guardado' : 'Actuación enviada'}</h2>
+          <p>
+            {createdStatus === 'DRAFT'
+              ? 'La actuación queda en tu espacio privado hasta que decidas enviarla a coordinación.'
+              : 'Ha quedado registrada y pendiente de validación por la coordinación correspondiente.'}
+          </p>
+          {createdActionId && <p className="hint">Referencia: <strong>{createdActionId.slice(-8).toUpperCase()}</strong></p>
           <div className="rowActions">
             {createdActionId && <a className="primaryButton" href={`/actuaciones/${createdActionId}/evidencias`}>Añadir evidencias</a>}
-            <button className="secondaryButton" onClick={() => { setState('idle'); setSelected([]); setSelectedGroups([]); setSelectedObjectives([]); setNetworkDetails({}); setCreatedActionId(null); }}>Registrar otra</button>
+            {createdStatus === 'DRAFT' && createdActionId && <a className="secondaryButton" href={`/actuaciones/${createdActionId}/editar`}>Seguir editando</a>}
+            <button className="secondaryButton" onClick={() => { setState('idle'); setSelected([]); setSelectedGroups([]); setSelectedObjectives([]); setNetworkDetails({}); setCreatedActionId(null); setCreatedStatus(null); }}>Registrar otra</button>
           </div>
         </div>
       ) : (
@@ -325,9 +335,24 @@ export default function NewActionPage() {
           )}
 
           {state === 'error' && <p className="errorBox">No se pudo registrar la actuación. Revisa los datos o vuelve a iniciar sesión.</p>}
-          <button className="primaryButton" disabled={state === 'sending' || selected.length === 0}>
-            {state === 'sending' ? 'Enviando…' : 'Enviar actuación'}
-          </button>
+          <div className="rowActions">
+            <button
+              className="secondaryButton"
+              type="submit"
+              disabled={state === 'sending' || selected.length === 0}
+              onClick={() => { intentRef.current = 'draft'; }}
+            >
+              {state === 'sending' ? 'Guardando…' : 'Guardar borrador'}
+            </button>
+            <button
+              className="primaryButton"
+              type="submit"
+              disabled={state === 'sending' || selected.length === 0}
+              onClick={() => { intentRef.current = 'submit'; }}
+            >
+              {state === 'sending' ? 'Enviando…' : 'Enviar actuación'}
+            </button>
+          </div>
         </form>
       )}
     </main>
