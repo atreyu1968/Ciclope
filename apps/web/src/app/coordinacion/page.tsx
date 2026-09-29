@@ -14,6 +14,8 @@ type DashboardData = {
   unreadCommunications: number;
   communicationFollowups: number;
   savedReportSnapshots: number;
+  inactiveNetworks: Array<{ id: string; name: string }>;
+  inactiveObjectives: Array<{ id: string; title: string; network: { id: string; name: string } }>;
   estimatedMinutes: number;
   agendaMinutes: number;
   deferredPriorityCount: number;
@@ -136,7 +138,45 @@ export default function CoordinationDashboardPage() {
         <article className="statCard"><strong>{data.savedReportSnapshots}</strong><span>informes guardados sin entregar</span></article>
         <article className="statCard"><strong>{data.unreadCommunications}</strong><span>mensajes sin leer</span></article>
         <article className="statCard"><strong>{data.returnedOwnActions}</strong><span>actuaciones tuyas devueltas</span></article>
+        <article className="statCard"><strong>{data.inactiveNetworks.length}</strong><span>redes sin actividad reciente</span></article>
+        <article className="statCard"><strong>{data.inactiveObjectives.length}</strong><span>objetivos sin actividad reciente</span></article>
       </section>
+
+      {(data.inactiveNetworks.length > 0 || data.inactiveObjectives.length > 0) && (
+        <section className="panel">
+          <div className="panelHeader">
+            <div>
+              <p className="eyebrow">Seguimiento preventivo</p>
+              <h2>Actividad de los últimos 30 días</h2>
+            </div>
+          </div>
+          <div className="twoColumns">
+            <div>
+              <h3>Redes sin actuaciones validadas recientes</h3>
+              {data.inactiveNetworks.length ? (
+                <div className="chipRow">
+                  {data.inactiveNetworks.map((network) => <span className="chip" key={network.id}>{network.name}</span>)}
+                </div>
+              ) : <p className="empty">Todas las redes coordinadas tienen actividad reciente.</p>}
+            </div>
+            <div>
+              <h3>Objetivos abiertos sin actividad vinculada reciente</h3>
+              {data.inactiveObjectives.length ? (
+                <div className="assignmentList">
+                  {data.inactiveObjectives.map((objective) => (
+                    <div className="assignmentRow" key={objective.id}>
+                      <div>
+                        <strong>{objective.title}</strong>
+                        <span>{objective.network.name}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : <p className="empty">No se detectan objetivos abiertos sin actividad reciente.</p>}
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="panel focusPanel">
         <div className="panelHeader">
