@@ -176,7 +176,7 @@ export default function NewActionPage() {
               ? 'La actuación queda en tu espacio privado hasta que decidas enviarla a coordinación.'
               : 'Ha quedado registrada y pendiente de validación por la coordinación correspondiente.'}
           </p>
-          {createdActionId && <p className="hint">Referencia: <strong>{createdActionId.slice(-8).toUpperCase()}</strong></p>
+          {createdActionId && <p className="hint">Referencia: <strong>{createdActionId.slice(-8).toUpperCase()}</strong></p>}
           <div className="rowActions">
             {createdActionId && <a className="primaryButton" href={`/actuaciones/${createdActionId}/evidencias`}>Añadir evidencias</a>}
             {createdStatus === 'DRAFT' && createdActionId && <a className="secondaryButton" href={`/actuaciones/${createdActionId}/editar`}>Seguir editando</a>}
