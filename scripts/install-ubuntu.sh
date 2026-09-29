@@ -33,6 +33,7 @@ ln -sfn "$RELEASE" "$APP_ROOT/current"
 
 DB_PASSWORD="$(openssl rand -hex 24)"
 SESSION_SECRET="$(openssl rand -hex 48)"
+INTEGRATIONS_ENCRYPTION_KEY="$(openssl rand -hex 48)"
 
 sudo -u postgres psql <<SQL
 DO \$\$
@@ -58,15 +59,15 @@ WEB_PORT=3000
 NEXT_PUBLIC_API_URL=/api
 UPLOAD_DIR=$DATA_ROOT/uploads
 APP_BASE_URL=http://localhost
+APP_TIME_ZONE=Atlantic/Canary
 SESSION_SECRET=$SESSION_SECRET
+INTEGRATIONS_ENCRYPTION_KEY=$INTEGRATIONS_ENCRYPTION_KEY
 
-# Correo: completar después en /etc/ciclope-fp/ciclope.env si se desean avisos por email.
-SMTP_HOST=
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=
-SMTP_PASS=
-SMTP_FROM=
+# Resend y la API de IA se configuran posteriormente desde el panel de administración.
+AUTOMATIONS_ENABLED=true
+AUTOMATIONS_INTERVAL_MINUTES=60
+TASK_REMINDER_DAYS=3
+COMMUNICATION_REMINDER_HOURS=24
 EOF
 
 chmod 640 "$CONFIG_ROOT/ciclope.env"
