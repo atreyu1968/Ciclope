@@ -1,0 +1,26 @@
+export const ADMIN_ROLES = [
+  'SUPERADMIN',
+  'ADMIN_CENTRO',
+  'DIRECCION',
+] as const;
+
+export const COORDINATION_ROLES = [
+  ...ADMIN_ROLES,
+  'COORDINADOR_CICLOPE',
+  'COORD_INNOVACION',
+  'COORD_EMPRENDIMIENTO',
+  'COORD_IOP',
+  'COORD_CALIDAD',
+] as const;
+
+export const CONTENT_WRITE_ROLES = [
+  ...COORDINATION_ROLES,
+  'MIEMBRO_CICLOPE',
+  'RESPONSABLE_PROYECTO',
+  'PROFESOR_FP',
+] as const;
+
+export const ALL_ROLE_KEYS = [
+  ...CONTENT_WRITE_ROLES,
+  'LECTURA',
+] as const;
