@@ -11,6 +11,7 @@ export default function NewStaffRequestPage() {
   const [selected, setSelected] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch('/api/networks').then(async (response) => {
@@ -20,7 +21,8 @@ export default function NewStaffRequestPage() {
       }
       if (!response.ok) throw new Error();
       setNetworks(await response.json());
-    }).catch(() => setError('No se pudieron cargar las redes.'));
+    }).catch(() => setError('No se pudieron cargar las redes.'))
+      .finally(() => setLoading(false));
   }, [router]);
 
   function toggle(id: string) {
@@ -53,6 +55,15 @@ export default function NewStaffRequestPage() {
     }
     router.push(`/buzon/${body.id}`);
   }
+
+  if (loading) return (
+    <main className="formShell">
+      <div className="loadingState" role="status" aria-live="polite">
+        <span className="loadingSpinner" aria-hidden="true" />
+        <strong>Cargando redes destinatarias…</strong>
+      </div>
+    </main>
+  );
 
   return (
     <main className="formShell">
