@@ -8,6 +8,8 @@ type ReportScope = {
   academicYearId: string;
   networkIds?: string[];
   requestedNetworkId?: string;
+  from?: Date;
+  to?: Date;
 };
 
 @Injectable()
@@ -19,26 +21,57 @@ export class ReportsService {
       .some((role) => user.roles.includes(role));
   }
 
+  private parsePeriodDate(value: string | undefined, endOfDay = false) {
+    if (!value) return undefined;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      throw new NotFoundException('El periodo del informe no tiene un formato válido.');
+    }
+    const parsed = new Date(`${value}T${endOfDay ? '23:59:59.999' : '00:00:00.000'}Z`);
+    if (Number.isNaN(parsed.getTime())) {
+      throw new NotFoundException('El periodo del informe no es válido.');
+    }
+    return parsed;
+  }
+
   private async resolveScope(
     user: AuthenticatedUser,
     academicYearId?: string,
     networkId?: string,
+    from?: string,
+    to?: string,
   ): Promise<ReportScope> {
     const targetYearId = academicYearId ?? user.academicYearId;
     if (!targetYearId) throw new NotFoundException('No existe un curso académico disponible.');
 
     const year = await this.prisma.academicYear.findFirst({
       where: { id: targetYearId, centerId: user.centerId },
-      select: { id: true },
+      select: { id: true, startsAt: true, endsAt: true },
     });
     if (!year) throw new NotFoundException('Curso académico no encontrado.');
+
+    const fromDate = this.parsePeriodDate(from);
+    const toDate = this.parsePeriodDate(to, true);
+    if (fromDate && toDate && fromDate > toDate) {
+      throw new NotFoundException('La fecha inicial del periodo no puede ser posterior a la final.');
+    }
+    if (fromDate && fromDate < year.startsAt) {
+      throw new NotFoundException('La fecha inicial está fuera del curso académico.');
+    }
+    if (toDate && toDate > year.endsAt) {
+      throw new NotFoundException('La fecha final está fuera del curso académico.');
+    }
 
     if (this.isGlobal(user)) {
       if (networkId) {
         const network = await this.prisma.network.findFirst({ where: { id: networkId, active: true } });
         if (!network) throw new NotFoundException('Red no encontrada.');
       }
-      return { academicYearId: targetYearId, requestedNetworkId: networkId };
+      return {
+        academicYearId: targetYearId,
+        requestedNetworkId: networkId,
+        from: fromDate,
+        to: toDate,
+      };
     }
 
     const assignments = await this.prisma.networkCoordinator.findMany({
@@ -58,6 +91,8 @@ export class ReportsService {
       academicYearId: targetYearId,
       networkIds: networkId ? [networkId] : allowedNetworkIds,
       requestedNetworkId: networkId,
+      from: fromDate,
+      to: toDate,
     };
   }
 
@@ -65,6 +100,14 @@ export class ReportsService {
     return {
       academicYearId: scope.academicYearId,
       ...(status ? { status } : {}),
+      ...((scope.from || scope.to)
+        ? {
+            activityDate: {
+              ...(scope.from ? { gte: scope.from } : {}),
+              ...(scope.to ? { lte: scope.to } : {}),
+            },
+          }
+        : {}),
       ...(scope.networkIds
         ? { networks: { some: { networkId: { in: scope.networkIds } } } }
         : scope.requestedNetworkId
@@ -73,8 +116,14 @@ export class ReportsService {
     };
   }
 
-  async summary(user: AuthenticatedUser, academicYearId?: string, networkId?: string) {
-    const scope = await this.resolveScope(user, academicYearId, networkId);
+  async summary(
+    user: AuthenticatedUser,
+    academicYearId?: string,
+    networkId?: string,
+    from?: string,
+    to?: string,
+  ) {
+    const scope = await this.resolveScope(user, academicYearId, networkId, from, to);
     const year = await this.prisma.academicYear.findUniqueOrThrow({
       where: { id: scope.academicYearId },
       include: { center: { select: { name: true, code: true } } },
@@ -120,6 +169,7 @@ export class ReportsService {
                     select: {
                       id: true,
                       status: true,
+                      activityDate: true,
                       studentCount: true,
                       durationMinutes: true,
                       evidence: { select: { id: true } },
@@ -292,7 +342,10 @@ export class ReportsService {
       const objectives = plan.objectives.map((objective) => {
         const validatedActions = objective.actions
           .map((item) => item.action)
-          .filter((action) => action.status === ActionStatus.VALIDATED);
+          .filter((action) =>
+            action.status === ActionStatus.VALIDATED &&
+            (!scope.to || action.activityDate <= scope.to),
+          );
 
         let currentValue: number | null = null;
         if (objective.metric === PlanMetric.ACTIONS) {
@@ -393,6 +446,11 @@ export class ReportsService {
         closedAt: year.closedAt,
       },
       network: selectedNetwork,
+      period: {
+        from: scope.from ?? year.startsAt,
+        to: scope.to ?? year.endsAt,
+        filtered: Boolean(scope.from || scope.to),
+      },
       totals: {
         validatedActions: validated.length,
         pendingActions: pendingCount,
@@ -421,8 +479,14 @@ export class ReportsService {
     };
   }
 
-  async actionRows(user: AuthenticatedUser, academicYearId?: string, networkId?: string) {
-    const scope = await this.resolveScope(user, academicYearId, networkId);
+  async actionRows(
+    user: AuthenticatedUser,
+    academicYearId?: string,
+    networkId?: string,
+    from?: string,
+    to?: string,
+  ) {
+    const scope = await this.resolveScope(user, academicYearId, networkId, from, to);
     return this.prisma.action.findMany({
       where: this.actionWhere(scope, ActionStatus.VALIDATED),
       include: {
@@ -434,8 +498,14 @@ export class ReportsService {
     });
   }
 
-  async csv(user: AuthenticatedUser, academicYearId?: string, networkId?: string) {
-    const rows = await this.actionRows(user, academicYearId, networkId);
+  async csv(
+    user: AuthenticatedUser,
+    academicYearId?: string,
+    networkId?: string,
+    from?: string,
+    to?: string,
+  ) {
+    const rows = await this.actionRows(user, academicYearId, networkId, from, to);
     const escape = (value: unknown) => {
       const text = String(value ?? '').replace(/"/g, '""');
       return `"${text}"`;
