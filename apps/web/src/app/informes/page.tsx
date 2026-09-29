@@ -35,6 +35,7 @@ type Summary = {
       values: Array<{ value: string; label: string; count: number }>;
     }>;
   }>;
+  alerts: Array<{ key: string; severity: 'INFO' | 'WARNING' | 'CRITICAL'; title: string; detail: string }>;
   planProgress: Array<{
     id: string;
     title: string;
@@ -430,6 +431,25 @@ export default function ReportsPage() {
               “Participaciones de alumnado” suma las participaciones declaradas en las actuaciones; no equivale necesariamente a alumnado único.
             </p>
           </section>
+
+          {summary.alerts.length > 0 && (
+            <section className="reportSection noPrint">
+              <h2>Alertas de calidad antes de cerrar el informe</h2>
+              <div className="assignmentList">
+                {summary.alerts.map((alert) => (
+                  <div className="assignmentRow" key={alert.key}>
+                    <div>
+                      <strong>{alert.title}</strong>
+                      <span>{alert.detail}</span>
+                    </div>
+                    <span className={alert.severity === 'CRITICAL' ? 'badge dangerBadge' : 'badge warningChip'}>
+                      {alert.severity === 'CRITICAL' ? 'Crítica' : alert.severity === 'WARNING' ? 'Revisar' : 'Información'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           {aiText && (
             <section className="reportSection aiInterpretation">
