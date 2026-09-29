@@ -30,14 +30,14 @@
 - [x] Roles y autorización en backend.
 - [x] Restricción de endpoints administrativos por rol.
 - [x] Cifrado de secretos de integraciones.
-- [ ] Cambio de contraseña desde la cuenta.
-- [ ] Recuperación/restablecimiento de contraseña.
-- [ ] Forzar cambio de contraseña temporal cuando corresponda.
-- [ ] Cierre de sesión explícito desde la interfaz.
-- [ ] Gestión administrativa de activación/desactivación de usuarios.
-- [ ] Registro de auditoría de operaciones sensibles.
+- [x] Cambio de contraseña desde la cuenta.
+- [x] Recuperación/restablecimiento de contraseña.
+- [x] Forzar cambio de contraseña temporal cuando corresponda.
+- [x] Cierre de sesión explícito desde la interfaz.
+- [x] Gestión administrativa de activación/desactivación de usuarios.
+- [x] Registro de auditoría de operaciones sensibles.
 - [ ] Rate limiting básico en login y endpoints públicos.
-- [ ] Revisión de cabeceras HTTP de seguridad y política de cookies.
+- [x] Revisión de cabeceras HTTP de seguridad y política de cookies.
 - [ ] Validación final de permisos de todos los roles.
 
 ## 3. Cursos académicos y coordinaciones
@@ -49,10 +49,10 @@
 - [x] Varias coordinaciones simultáneas por docente.
 - [x] Coordinación general CÍCLOPE y coordinaciones por red.
 - [x] Curso activo visible dinámicamente en sesión/cabecera.
-- [ ] Cierre de curso guiado.
-- [ ] Apertura de nuevo curso copiando estructura reutilizable sin copiar actuaciones.
-- [ ] Vista histórica de coordinaciones por curso.
-- [ ] Protección contra dejar un curso sin configuración mínima necesaria.
+- [x] Cierre de curso guiado.
+- [x] Apertura de nuevo curso copiando estructura reutilizable sin copiar actuaciones.
+- [x] Vista histórica de coordinaciones por curso.
+- [x] Protección contra dejar un curso sin configuración mínima necesaria.
 
 ## 4. Estructura FP y profesorado
 
@@ -63,8 +63,8 @@
 - [x] Turnos.
 - [x] Alta manual de profesorado.
 - [x] Importación masiva de profesorado.
-- [ ] Edición completa de ficha de profesor.
-- [ ] Desactivación/reactivación sin pérdida de histórico.
+- [x] Edición completa de ficha de profesor.
+- [x] Desactivación/reactivación sin pérdida de histórico.
 - [ ] Exportación del profesorado.
 - [ ] Informe de errores y previsualización antes de una importación masiva.
 - [ ] Gestión de duplicados en importación.
