@@ -97,6 +97,12 @@ export default function ReportsPage() {
   const [snapshotMessage, setSnapshotMessage] = useState('');
   const [snapshotError, setSnapshotError] = useState('');
   const [savingSnapshot, setSavingSnapshot] = useState(false);
+  const [compareYearId, setCompareYearId] = useState('');
+  const [compareFromDate, setCompareFromDate] = useState('');
+  const [compareToDate, setCompareToDate] = useState('');
+  const [comparison, setComparison] = useState<Summary | null>(null);
+  const [comparisonLoading, setComparisonLoading] = useState(false);
+  const [comparisonError, setComparisonError] = useState('');
 
   useEffect(() => {
     Promise.all([
@@ -128,6 +134,8 @@ export default function ReportsPage() {
     setAiError('');
     setSnapshotMessage('');
     setSnapshotError('');
+    setComparison(null);
+    setComparisonError('');
     const params = new URLSearchParams({ academicYearId: yearId });
     if (networkId) params.set('networkId', networkId);
     if (fromDate) params.set('from', fromDate);
@@ -151,6 +159,11 @@ export default function ReportsPage() {
   const selectedYear = useMemo(
     () => years.find((year) => year.id === yearId),
     [years, yearId],
+  );
+
+  const selectedCompareYear = useMemo(
+    () => years.find((year) => year.id === compareYearId),
+    [years, compareYearId],
   );
 
   const maxMonthly = useMemo(
@@ -213,6 +226,35 @@ export default function ReportsPage() {
     }
 
     setSnapshotMessage('Corte histórico guardado. Sus cifras ya no cambiarán aunque se registren o validen datos después.');
+  }
+
+  async function compareReport() {
+    if (!compareYearId) {
+      setComparisonError('Selecciona un curso de referencia.');
+      return;
+    }
+    setComparisonLoading(true);
+    setComparisonError('');
+    const params = new URLSearchParams({ academicYearId: compareYearId });
+    if (networkId) params.set('networkId', networkId);
+    if (compareFromDate) params.set('from', compareFromDate);
+    if (compareToDate) params.set('to', compareToDate);
+    const response = await fetch(`/api/reports/summary?${params.toString()}`);
+    const body = await response.json().catch(() => ({}));
+    setComparisonLoading(false);
+    if (!response.ok) {
+      setComparison(null);
+      setComparisonError(
+        Array.isArray(body?.message) ? body.message.join(' ') : body?.message || 'No se pudo generar la comparación.',
+      );
+      return;
+    }
+    setComparison(body);
+  }
+
+  function delta(currentValue: number, referenceValue: number, suffix = '') {
+    const value = Math.round((currentValue - referenceValue) * 10) / 10;
+    return `${value > 0 ? '+' : ''}${value}${suffix}`;
   }
 
   return (
@@ -288,6 +330,73 @@ export default function ReportsPage() {
         )}
       </section>
 
+      <section className="panel reportFilters noPrint">
+        <div className="panelHeader">
+          <div>
+            <p className="eyebrow">Comparativa</p>
+            <h2>Comparar con otro periodo o curso</h2>
+          </div>
+          {comparison && (
+            <button className="textButton" type="button" onClick={() => setComparison(null)}>Quitar comparativa</button>
+          )}
+        </div>
+        <div className="twoColumns">
+          <label>Curso de referencia
+            <select value={compareYearId} onChange={(event) => {
+              setCompareYearId(event.target.value);
+              setCompareFromDate('');
+              setCompareToDate('');
+              setComparison(null);
+            }}>
+              <option value="">Selecciona curso</option>
+              {years.map((year) => <option key={year.id} value={year.id}>{year.name}</option>)}
+            </select>
+          </label>
+          <label>Ámbito
+            <input
+              value={networkId ? networks.find((item) => item.id === networkId)?.name || 'Red seleccionada' : 'Todas las redes autorizadas'}
+              readOnly
+            />
+          </label>
+        </div>
+        {compareYearId && (
+          <div className="twoColumns reportPeriodRow">
+            <label>Desde referencia
+              <input
+                type="date"
+                value={compareFromDate}
+                min={selectedCompareYear?.startsAt?.slice(0, 10)}
+                max={compareToDate || selectedCompareYear?.endsAt?.slice(0, 10)}
+                onChange={(event) => setCompareFromDate(event.target.value)}
+              />
+            </label>
+            <label>Hasta referencia
+              <input
+                type="date"
+                value={compareToDate}
+                min={compareFromDate || selectedCompareYear?.startsAt?.slice(0, 10)}
+                max={selectedCompareYear?.endsAt?.slice(0, 10)}
+                onChange={(event) => setCompareToDate(event.target.value)}
+              />
+            </label>
+          </div>
+        )}
+        <div className="rowActions">
+          <button
+            className="secondaryButton"
+            type="button"
+            disabled={!compareYearId || comparisonLoading}
+            onClick={() => void compareReport()}
+          >
+            {comparisonLoading ? 'Comparando…' : 'Generar comparativa'}
+          </button>
+          <span className="hint">
+            Selecciona el mismo curso para comparar dos periodos o un curso distinto para una comparativa interanual.
+          </span>
+        </div>
+        {comparisonError && <div className="errorBox">{comparisonError}</div>}
+      </section>
+
       {snapshotMessage && <div className="notice noPrint">{snapshotMessage}</div>}
       {snapshotError && <div className="errorBox noPrint">{snapshotError}</div>}
       {error && <div className="errorBox noPrint">{error}</div>}
@@ -343,6 +452,59 @@ export default function ReportsPage() {
               <p className="reportNote">
                 Texto generado a partir de indicadores agregados y revisable por la coordinación antes de su uso oficial.
               </p>
+            </section>
+          )}
+
+          {comparison && (
+            <section className="reportSection comparisonBlock">
+              <h2>Comparativa con {comparison.academicYear.name}</h2>
+              <p className="reportNote">
+                Referencia: {new Date(comparison.period.from).toLocaleDateString('es-ES')} – {new Date(comparison.period.to).toLocaleDateString('es-ES')}.
+                La variación se calcula como periodo actual menos periodo de referencia.
+              </p>
+              <div className="tableWrap">
+                <table>
+                  <thead><tr><th>Indicador</th><th>Actual</th><th>Referencia</th><th>Variación</th></tr></thead>
+                  <tbody>
+                    <tr>
+                      <td>Actuaciones validadas</td>
+                      <td>{summary.totals.validatedActions}</td>
+                      <td>{comparison.totals.validatedActions}</td>
+                      <td>{delta(summary.totals.validatedActions, comparison.totals.validatedActions)}</td>
+                    </tr>
+                    <tr>
+                      <td>Docentes participantes</td>
+                      <td>{summary.totals.teachers}</td>
+                      <td>{comparison.totals.teachers}</td>
+                      <td>{delta(summary.totals.teachers, comparison.totals.teachers)}</td>
+                    </tr>
+                    <tr>
+                      <td>Participaciones de alumnado</td>
+                      <td>{summary.totals.studentParticipations}</td>
+                      <td>{comparison.totals.studentParticipations}</td>
+                      <td>{delta(summary.totals.studentParticipations, comparison.totals.studentParticipations)}</td>
+                    </tr>
+                    <tr>
+                      <td>Horas registradas</td>
+                      <td>{summary.totals.totalHours}</td>
+                      <td>{comparison.totals.totalHours}</td>
+                      <td>{delta(summary.totals.totalHours, comparison.totals.totalHours)}</td>
+                    </tr>
+                    <tr>
+                      <td>Evidencias</td>
+                      <td>{summary.totals.evidence}</td>
+                      <td>{comparison.totals.evidence}</td>
+                      <td>{delta(summary.totals.evidence, comparison.totals.evidence)}</td>
+                    </tr>
+                    <tr>
+                      <td>Cobertura documental</td>
+                      <td>{summary.totals.evidenceCoveragePercent}%</td>
+                      <td>{comparison.totals.evidenceCoveragePercent}%</td>
+                      <td>{delta(summary.totals.evidenceCoveragePercent, comparison.totals.evidenceCoveragePercent, ' pp')}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </section>
           )}
 
