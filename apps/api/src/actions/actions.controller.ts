@@ -31,6 +31,11 @@ export class ActionsController {
     return this.actions.create(dto, user);
   }
 
+  @Get('form-config')
+  formConfig() {
+    return this.actions.formConfig();
+  }
+
   @Get('mine')
   mine(@CurrentUser() user: AuthenticatedUser) {
     return this.actions.findMine(user);
