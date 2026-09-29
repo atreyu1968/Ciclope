@@ -97,6 +97,14 @@ export default function FacultyAdminPage() {
     setMessage('');
     setError('');
     const form = new FormData(event.currentTarget);
+    const user = users.find((item) => item.id === userId);
+    const willDeactivate = Boolean(user?.active && form.get('active') !== 'on');
+    if (willDeactivate && !window.confirm(
+      `¿Desactivar la cuenta de ${user?.firstName} ${user?.lastName}? Se revocarán sus sesiones y no podrá acceder hasta que se reactive.`,
+    )) {
+      setWorkingId('');
+      return;
+    }
     const response = await fetch('/api/users/' + userId, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
