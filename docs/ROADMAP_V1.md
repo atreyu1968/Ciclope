@@ -15,11 +15,11 @@
 - [x] Variables de entorno y generación de secretos.
 - [x] Endpoint de salud de la API.
 - [x] CI de compilación y comprobaciones básicas.
-- [ ] Script de actualización segura de una instalación existente.
-- [ ] Copia de seguridad automática de PostgreSQL y ficheros.
-- [ ] Procedimiento automatizado de restauración.
-- [ ] Rotación/limpieza de releases y backups antiguos.
-- [ ] Comprobación postinstalación que valide web, API, BD, escritura y servicios.
+- [x] Script de actualización segura de una instalación existente.
+- [x] Copia de seguridad automática de PostgreSQL y ficheros.
+- [x] Procedimiento automatizado de restauración.
+- [x] Rotación/limpieza de releases y backups antiguos.
+- [x] Comprobación postinstalación que valida servicios, web y API; pendiente ampliar la prueba profunda de BD/escritura en la fase de tests.
 - [ ] Documentar despliegue con dominio/HTTPS y Cloudflare Tunnel.
 
 ## 2. Puesta en marcha, autenticación y seguridad
