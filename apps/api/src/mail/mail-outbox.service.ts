@@ -90,6 +90,27 @@ export class MailOutboxService implements OnModuleInit, OnModuleDestroy {
     return { queued: uniqueRecipients.length };
   }
 
+  async enqueueDirectOnce(
+    dedupeKey: string,
+    subject: string,
+    textBody: string,
+    recipient: Recipient,
+  ) {
+    const result = await this.prisma.emailOutbox.createMany({
+      data: [{
+        dedupeKey,
+        userId: recipient.id,
+        recipientEmail: recipient.email,
+        subject,
+        textBody,
+      }],
+      skipDuplicates: true,
+    });
+
+    if (result.count && this.transporter) void this.processBatch();
+    return { queued: result.count };
+  }
+
   async enqueueCommunication(
     communicationId: string,
     title: string,
