@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Res, UseGuards } from '@nestjs/common';
+import type { Response } from 'express';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
@@ -21,6 +22,24 @@ export class UsersController {
   @Roles('SUPERADMIN', 'ADMIN_CENTRO', 'DIRECCION', 'COORDINADOR_CICLOPE', 'COORD_INNOVACION', 'COORD_EMPRENDIMIENTO', 'COORD_IOP', 'COORD_CALIDAD')
   list(@CurrentUser() user: AuthenticatedUser) {
     return this.users.list(user.centerId);
+  }
+
+  @Get('export.csv')
+  @Roles(...ADMIN)
+  async exportCsv(
+    @CurrentUser() user: AuthenticatedUser,
+    @Res() response: Response,
+  ) {
+    const csv = await this.users.exportCsv(user.centerId);
+    response.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    response.setHeader('Content-Disposition', 'attachment; filename="profesorado-ciclope.csv"');
+    response.send(csv);
+  }
+
+  @Post('import/preview')
+  @Roles(...ADMIN)
+  previewImport(@CurrentUser() user: AuthenticatedUser, @Body() dto: ImportUsersDto) {
+    return this.users.previewImport(user.centerId, dto);
   }
 
   @Post()
