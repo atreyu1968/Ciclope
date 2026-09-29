@@ -19,11 +19,6 @@ export class AutomationsService implements OnModuleInit, OnModuleDestroy {
       this.logger.log('Automatizaciones desactivadas por configuración.');
       return;
     }
-    if (!this.mail.isConfigured()) {
-      this.logger.warn('Automatizaciones de correo inactivas porque SMTP no está configurado.');
-      return;
-    }
-
     const configuredMinutes = Number(process.env.AUTOMATIONS_INTERVAL_MINUTES ?? 60);
     const intervalMinutes = Number.isFinite(configuredMinutes)
       ? Math.max(15, configuredMinutes)
@@ -77,7 +72,12 @@ export class AutomationsService implements OnModuleInit, OnModuleDestroy {
 
     const include = {
       owner: { select: { id: true, email: true, firstName: true, lastName: true, active: true } },
-      plan: { include: { network: { select: { name: true } } } },
+      plan: {
+        include: {
+          network: { select: { name: true } },
+          academicYear: { select: { centerId: true } },
+        },
+      },
     } as const;
 
     const [dueSoon, overdue] = await Promise.all([
@@ -113,6 +113,7 @@ export class AutomationsService implements OnModuleInit, OnModuleDestroy {
     for (const task of dueSoon) {
       if (!task.owner?.active || !task.dueDate) continue;
       const result = await this.mail.enqueueDirectOnce(
+        task.plan.academicYear.centerId,
         `plan-task:${task.id}:due-soon:${task.dueDate.toISOString()}`,
         `[CÍCLOPE FP] Tarea próxima: ${task.title}`,
         [
@@ -130,6 +131,7 @@ export class AutomationsService implements OnModuleInit, OnModuleDestroy {
     for (const task of overdue) {
       if (!task.owner?.active || !task.dueDate) continue;
       const result = await this.mail.enqueueDirectOnce(
+        task.plan.academicYear.centerId,
         `plan-task:${task.id}:overdue:${task.dueDate.toISOString()}`,
         `[CÍCLOPE FP] Tarea vencida: ${task.title}`,
         [
@@ -155,6 +157,7 @@ export class AutomationsService implements OnModuleInit, OnModuleDestroy {
 
     const include = {
       originNetwork: { select: { name: true } },
+      academicYear: { select: { centerId: true } },
       recipients: {
         where: { respondedAt: null },
         include: {
@@ -192,6 +195,7 @@ export class AutomationsService implements OnModuleInit, OnModuleDestroy {
       for (const recipient of communication.recipients) {
         if (!recipient.user.active) continue;
         const result = await this.mail.enqueueDirectOnce(
+          communication.academicYear.centerId,
           `communication:${communication.id}:due-soon:${recipient.user.id}:${communication.deadline.toISOString()}`,
           `[CÍCLOPE FP] Respuesta pendiente: ${communication.title}`,
           [
@@ -212,6 +216,7 @@ export class AutomationsService implements OnModuleInit, OnModuleDestroy {
       for (const recipient of communication.recipients) {
         if (!recipient.user.active) continue;
         const result = await this.mail.enqueueDirectOnce(
+          communication.academicYear.centerId,
           `communication:${communication.id}:overdue:${recipient.user.id}:${communication.deadline.toISOString()}`,
           `[CÍCLOPE FP] Plazo vencido: ${communication.title}`,
           [
