@@ -1,4 +1,21 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Res,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
+import { createReadStream, mkdirSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
+import { basename, join } from 'node:path';
+import { diskStorage } from 'multer';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
@@ -20,6 +37,33 @@ const PUBLISHERS = [
   'COORD_CALIDAD',
 ];
 
+const COMMUNICATION_ATTACHMENT_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'text/plain',
+]);
+
+function communicationAttachmentDirectory() {
+  const root = process.env.UPLOAD_DIR || '/tmp/ciclope-fp-uploads';
+  const directory = join(root, 'communication-attachments');
+  mkdirSync(directory, { recursive: true });
+  return directory;
+}
+
+function communicationAttachmentMaxBytes() {
+  const configured = Number(process.env.COMMUNICATION_ATTACHMENT_MAX_MB || '15');
+  const mb = Number.isFinite(configured) ? Math.min(Math.max(configured, 1), 50) : 15;
+  return mb * 1024 * 1024;
+}
+
 @Controller('communications')
 @UseGuards(SessionGuard, RolesGuard)
 export class CommunicationsController {
@@ -35,6 +79,46 @@ export class CommunicationsController {
   @Roles(...PUBLISHERS)
   create(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateCommunicationDto) {
     return this.communications.createAndPublish(user, dto);
+  }
+
+  @Post(':id/attachments')
+  @Roles(...PUBLISHERS)
+  @UseInterceptors(FileInterceptor('file', {
+    storage: diskStorage({
+      destination: (_request, _file, callback) => callback(null, communicationAttachmentDirectory()),
+      filename: (_request, _file, callback) => callback(null, randomUUID()),
+    }),
+    limits: { fileSize: communicationAttachmentMaxBytes() },
+    fileFilter: (_request, file, callback) => {
+      if (!COMMUNICATION_ATTACHMENT_MIME_TYPES.has(file.mimetype)) {
+        callback(new Error('Tipo de archivo adjunto no permitido.'), false);
+        return;
+      }
+      callback(null, true);
+    },
+  }))
+  addAttachment(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.communications.addAttachment(user, id, file);
+  }
+
+  @Get(':id/attachments/:attachmentId/download')
+  async downloadAttachment(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Param('attachmentId') attachmentId: string,
+    @Res() response: Response,
+  ) {
+    const attachment = await this.communications.attachmentForDownload(user, id, attachmentId);
+    response.setHeader('Content-Type', attachment.mimeType || 'application/octet-stream');
+    response.setHeader(
+      'Content-Disposition',
+      `attachment; filename*=UTF-8''${encodeURIComponent(attachment.originalName || basename(attachment.path))}`,
+    );
+    createReadStream(attachment.path).pipe(response);
   }
 
   @Get('inbox')
