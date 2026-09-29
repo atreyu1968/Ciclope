@@ -38,7 +38,7 @@
 - [x] Registro de auditoría de operaciones sensibles.
 - [x] Rate limiting básico en login y recuperación pública de contraseña.
 - [x] Revisión de cabeceras HTTP de seguridad y política de cookies.
-- [ ] Validación final de permisos de todos los roles.
+- [x] Validación final de permisos de todos los roles.
 
 ## 3. Cursos académicos y coordinaciones
 
@@ -243,7 +243,7 @@
 - [ ] Prueba de actualización conservando datos.
 - [ ] Prueba de backup y restauración.
 - [ ] Prueba con datos de volumen razonable de un curso completo.
-- [ ] Auditoría de dependencias y vulnerabilidades.
+- [x] Auditoría de dependencias y vulnerabilidades.
 - [ ] Semáforo final sin errores críticos.
 
 ## 16. Documentación y entrega estable
