@@ -2,12 +2,64 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { ActionStatus, AnnualPlanStatus, NetworkCode, PlanObjectiveStatus } from '../generated/prisma/client';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { PrismaService } from '../database/prisma.service';
+import { MailOutboxService } from '../mail/mail-outbox.service';
 import { ACTION_NETWORK_FIELDS, publicActionNetworkFields } from './action-form.config';
 import { CreateActionDto } from './dto/create-action.dto';
 
 @Injectable()
 export class ActionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mail: MailOutboxService,
+  ) {}
+
+  private actionPortalLink() {
+    const base = process.env.APP_BASE_URL?.replace(/\/$/, '');
+    return base ? `${base}/actuaciones/mis-actuaciones` : '';
+  }
+
+  private async notifyActionStatus(
+    action: {
+      id: string;
+      title: string;
+      submittedById: string | null;
+      submittedByEmail: string;
+      submittedBy?: { id: string; email: string; firstName: string } | null;
+      academicYear: { centerId: string };
+    },
+    kind: 'validated' | 'returned',
+    transitionAt: Date,
+    reason?: string,
+  ) {
+    if (!action.submittedById || !action.submittedBy) return;
+    const link = this.actionPortalLink();
+    const validated = kind === 'validated';
+    const subject = validated
+      ? `[CÍCLOPE FP] Actuación validada: ${action.title}`
+      : `[CÍCLOPE FP] Actuación devuelta para corrección: ${action.title}`;
+    const body = validated
+      ? [
+          `Hola ${action.submittedBy.firstName},`,
+          '',
+          `La actuación “${action.title}” ha sido validada por la coordinación.`,
+          link ? `Consulta tus actuaciones en: ${link}` : '',
+        ].filter(Boolean).join('\n')
+      : [
+          `Hola ${action.submittedBy.firstName},`,
+          '',
+          `La actuación “${action.title}” ha sido devuelta para corrección.`,
+          reason ? `Motivo: ${reason}` : '',
+          link ? `Revísala y vuelve a enviarla desde: ${link}` : '',
+        ].filter(Boolean).join('\n');
+
+    await this.mail.enqueueDirectOnce(
+      action.academicYear.centerId,
+      `action:${action.id}:${kind}:${transitionAt.toISOString()}`,
+      subject,
+      body,
+      { id: action.submittedBy.id, email: action.submittedBy.email },
+    );
+  }
 
   private canManageAll(user: AuthenticatedUser) {
     return ['SUPERADMIN', 'ADMIN_CENTRO', 'DIRECCION', 'COORDINADOR_CICLOPE']
@@ -338,6 +390,7 @@ export class ActionsService {
       await this.assertCanManageAction(id, user);
     }
 
+    const validatedAt = new Date();
     const result = await this.prisma.action.updateMany({
       where: {
         id: { in: uniqueIds },
@@ -345,41 +398,77 @@ export class ActionsService {
       },
       data: {
         status: ActionStatus.VALIDATED,
-        validatedAt: new Date(),
+        validatedAt,
         validatedById: user.id,
         returnedAt: null,
         returnedReason: null,
       },
     });
+
+    if (result.count) {
+      const validated = await this.prisma.action.findMany({
+        where: { id: { in: uniqueIds }, validatedAt },
+        include: {
+          academicYear: { select: { centerId: true } },
+          submittedBy: { select: { id: true, email: true, firstName: true } },
+        },
+      });
+      await Promise.all(validated.map((action) =>
+        this.notifyActionStatus(action, 'validated', validatedAt),
+      ));
+    }
 
     return { validated: result.count };
   }
 
   async validate(id: string, user: AuthenticatedUser) {
-    await this.assertCanManageAction(id, user);
-    return this.prisma.action.update({
+    const current = await this.assertCanManageAction(id, user);
+    if (current.status !== ActionStatus.PENDING_VALIDATION) {
+      throw new BadRequestException('La actuación ya no está pendiente de validación.');
+    }
+
+    const validatedAt = new Date();
+    const updated = await this.prisma.action.update({
       where: { id },
       data: {
         status: ActionStatus.VALIDATED,
-        validatedAt: new Date(),
+        validatedAt,
         validatedById: user.id,
         returnedAt: null,
         returnedReason: null,
       },
+      include: {
+        academicYear: { select: { centerId: true } },
+        submittedBy: { select: { id: true, email: true, firstName: true } },
+      },
     });
+    await this.notifyActionStatus(updated, 'validated', validatedAt);
+    return updated;
   }
 
   async returnForCorrection(id: string, reason: string, user: AuthenticatedUser) {
-    await this.assertCanManageAction(id, user);
-    return this.prisma.action.update({
+    const current = await this.assertCanManageAction(id, user);
+    if (current.status !== ActionStatus.PENDING_VALIDATION) {
+      throw new BadRequestException('La actuación ya no está pendiente de validación.');
+    }
+
+    const returnedAt = new Date();
+    const cleanReason = reason.trim();
+    const updated = await this.prisma.action.update({
       where: { id },
       data: {
         status: ActionStatus.RETURNED,
-        returnedAt: new Date(),
-        returnedReason: reason.trim(),
+        returnedAt,
+        returnedReason: cleanReason,
         validatedById: user.id,
         validatedAt: null,
       },
+      include: {
+        academicYear: { select: { centerId: true } },
+        submittedBy: { select: { id: true, email: true, firstName: true } },
+      },
     });
+    await this.notifyActionStatus(updated, 'returned', returnedAt, cleanReason);
+    return updated;
   }
 }
