@@ -235,7 +235,7 @@
 - [x] CI de build en GitHub Actions.
 - [x] Tests unitarios de servicios críticos.
 - [x] Tests de autorización por rol.
-- [ ] Tests de integración API + PostgreSQL.
+- [x] Tests de integración API + PostgreSQL.
 - [ ] Tests E2E: configuración inicial → login → actuación → validación → informe.
 - [ ] Tests E2E de comunicaciones/Resend con transporte simulado.
 - [ ] Tests E2E de cierre/apertura de curso.
