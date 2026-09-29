@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { access, unlink } from 'node:fs/promises';
 import { CommunicationStatus, EmailOutboxStatus, Shift } from '../generated/prisma/client';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { PrismaService } from '../database/prisma.service';
@@ -15,6 +16,27 @@ export class CommunicationsService {
   private canPublishGlobally(user: AuthenticatedUser) {
     return ['SUPERADMIN', 'ADMIN_CENTRO', 'DIRECCION', 'COORDINADOR_CICLOPE']
       .some((role) => user.roles.includes(role));
+  }
+
+  private async assertCanManageCommunication(user: AuthenticatedUser, communicationId: string) {
+    const communication = await this.prisma.communication.findUnique({
+      where: { id: communicationId },
+      include: { academicYear: true },
+    });
+
+    if (!communication || communication.academicYear.centerId !== user.centerId) {
+      throw new NotFoundException('Comunicación no encontrada.');
+    }
+    if (communication.academicYearId !== user.academicYearId) {
+      throw new ForbiddenException('La comunicación pertenece a otro curso académico.');
+    }
+    if (
+      !this.canPublishGlobally(user) &&
+      (!communication.originNetworkId || !user.coordinatorNetworkIds.includes(communication.originNetworkId))
+    ) {
+      throw new ForbiddenException('No puedes gestionar esta comunicación.');
+    }
+    return communication;
   }
 
   private async assertOriginNetwork(user: AuthenticatedUser, networkId?: string) {
@@ -139,6 +161,16 @@ export class CommunicationsService {
           include: {
             originNetwork: true,
             author: { select: { firstName: true, lastName: true } },
+            attachments: {
+              select: {
+                id: true,
+                originalName: true,
+                mimeType: true,
+                sizeBytes: true,
+                createdAt: true,
+              },
+              orderBy: { createdAt: 'asc' },
+            },
           },
         },
       },
@@ -159,6 +191,16 @@ export class CommunicationsService {
       include: {
         originNetwork: true,
         author: { select: { firstName: true, lastName: true } },
+        attachments: {
+          select: {
+            id: true,
+            originalName: true,
+            mimeType: true,
+            sizeBytes: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: 'asc' },
+        },
         recipients: {
           select: { userId: true, readAt: true, respondedAt: true },
         },
@@ -167,6 +209,93 @@ export class CommunicationsService {
       orderBy: { createdAt: 'desc' },
       take: 100,
     });
+  }
+
+  async addAttachment(
+    user: AuthenticatedUser,
+    communicationId: string,
+    file?: Express.Multer.File,
+  ) {
+    if (!file) throw new BadRequestException('Selecciona un fichero para adjuntar.');
+
+    try {
+      await this.assertCanManageCommunication(user, communicationId);
+      const count = await this.prisma.communicationAttachment.count({
+        where: { communicationId },
+      });
+      if (count >= 10) {
+        throw new BadRequestException('Cada comunicación admite un máximo de 10 adjuntos.');
+      }
+
+      return await this.prisma.communicationAttachment.create({
+        data: {
+          communicationId,
+          uploadedById: user.id,
+          originalName: file.originalname.slice(0, 255),
+          storedName: file.filename,
+          path: file.path,
+          mimeType: file.mimetype,
+          sizeBytes: file.size,
+        },
+        select: {
+          id: true,
+          originalName: true,
+          mimeType: true,
+          sizeBytes: true,
+          createdAt: true,
+        },
+      });
+    } catch (error) {
+      await unlink(file.path).catch(() => undefined);
+      throw error;
+    }
+  }
+
+  async attachmentForDownload(
+    user: AuthenticatedUser,
+    communicationId: string,
+    attachmentId: string,
+  ) {
+    const attachment = await this.prisma.communicationAttachment.findUnique({
+      where: { id: attachmentId },
+      include: {
+        communication: {
+          include: {
+            academicYear: true,
+            recipients: {
+              where: { userId: user.id },
+              select: { userId: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (
+      !attachment ||
+      attachment.communicationId !== communicationId ||
+      attachment.communication.academicYear.centerId !== user.centerId
+    ) {
+      throw new NotFoundException('Adjunto no encontrado.');
+    }
+
+    const communication = attachment.communication;
+    const isRecipient = communication.recipients.length > 0;
+    const isAuthor = communication.authorId === user.id;
+    const canManage = this.canPublishGlobally(user) || Boolean(
+      communication.originNetworkId &&
+      user.coordinatorNetworkIds.includes(communication.originNetworkId),
+    );
+
+    if (!isRecipient && !isAuthor && !canManage) {
+      throw new ForbiddenException('No tienes acceso a este adjunto.');
+    }
+
+    await access(attachment.path).catch(() => {
+      throw new NotFoundException('El fichero adjunto ya no está disponible.');
+    });
+
+    return attachment;
   }
 
   async markRead(user: AuthenticatedUser, communicationId: string) {
