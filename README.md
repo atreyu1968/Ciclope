@@ -36,6 +36,10 @@ Reducir la carga administrativa de las coordinaciones y servir como canal asínc
 - planes anuales por red, objetivos, tareas y responsables;
 - indicadores y memoria automática;
 - cobertura documental y progreso automático de objetivos;
+- formulario inteligente con datos opcionales específicos por red;
+- indicadores automáticos de Innovación, Emprendimiento, IOP y Calidad;
+- hitos oficiales de planificación integrados en cada plan anual;
+- seguimiento de tareas, vencimientos y próximos plazos desde el dashboard;
 - recordatorios automáticos de plazos;
 - correo transaccional mediante Resend;
 - configuración de Resend desde el panel de administración;
