@@ -99,3 +99,28 @@ Los coordinadores pueden solicitar desde Informes dos operaciones:
 
 Antes de enviar información al proveedor se genera un payload agregado que excluye el listado nominal del profesorado.
 El texto producido por IA se presenta como borrador sujeto a revisión humana.
+
+
+## Registro inteligente por red
+
+`Action.networkDetails` almacena un JSON estructurado y validado por el backend. El formulario común sigue siendo único; los campos específicos aparecen únicamente para las redes seleccionadas y son opcionales.
+
+La configuración actual recoge señales reutilizables para memoria e indicadores:
+
+- Innovación: enfoque, transferibilidad y colaboración externa.
+- Emprendimiento: enfoque, colaboración externa y resultado generado.
+- Información y Orientación Profesional: ámbito, destinatario y colaboración externa.
+- Calidad: ámbito de mejora, fase EQAVET y generación de acción de mejora.
+
+Los valores se validan contra `ACTION_NETWORK_FIELDS`. El backend ignora claves no reconocidas y no acepta opciones fuera del catálogo.
+
+## Hitos oficiales
+
+Los planes del curso 2026-2027 incorporan automáticamente los hitos conocidos publicados por la DGFPERE:
+
+- presentación del Plan de Acción: 30/10/2026;
+- memoria final del Plan de Acción: 18/06/2027.
+
+Se modelan como `PlanTask` con `official=true` y una `officialKey` estable. La restricción única `planId + officialKey` permite ejecutar el backfill en cada arranque sin duplicar tareas.
+
+Los informes trimestrales se gestionan como tareas del plan cuando la DGFPERE publique las fechas concretas.
