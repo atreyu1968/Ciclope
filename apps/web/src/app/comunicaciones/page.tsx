@@ -16,6 +16,13 @@ type InboxItem = {
     publishedAt?: string | null;
     originNetwork?: { name: string } | null;
     author?: { firstName: string; lastName: string } | null;
+    attachments: Array<{
+      id: string;
+      originalName: string;
+      mimeType: string;
+      sizeBytes: number;
+      createdAt: string;
+    }>;
   };
 };
 
@@ -86,6 +93,23 @@ export default function CommunicationsInboxPage() {
                   {communication.author ? `${communication.author.firstName} ${communication.author.lastName}` : 'Coordinación'}
                 </p>
                 {communication.deadline && <p className="hint">Fecha límite: {new Date(communication.deadline).toLocaleString('es-ES')}</p>}
+                {communication.attachments.length > 0 && (
+                  <div className="communicationAttachments">
+                    <strong>Adjuntos</strong>
+                    <div>
+                      {communication.attachments.map((attachment) => (
+                        <a
+                          className="attachmentLink"
+                          key={attachment.id}
+                          href={`/api/communications/${communication.id}/attachments/${attachment.id}/download`}
+                        >
+                          <span>{attachment.originalName}</span>
+                          <small>{Math.max(1, Math.round(attachment.sizeBytes / 1024))} KB</small>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {item.responseText && <div className="responseBox"><strong>Tu respuesta</strong><p>{item.responseText}</p></div>}
               </div>
               <div className="queueActions">
