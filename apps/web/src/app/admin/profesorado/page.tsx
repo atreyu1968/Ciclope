@@ -178,8 +178,8 @@ export default function FacultyAdminPage() {
         </div>
       </div>
 
-      {message && <div className="notice">{message}</div>}
-      {error && <div className="errorBox">{error}</div>}
+      {message && <div className="notice" role="status" aria-live="polite">{message}</div>}
+      {error && <div className="errorBox" role="alert">{error}</div>}
       {loading && !error && (
         <div className="loadingState" role="status" aria-live="polite">
           <span className="loadingSpinner" aria-hidden="true" />
@@ -187,7 +187,7 @@ export default function FacultyAdminPage() {
         </div>
       )}
       {temporaryPassword && (
-        <div className="successBox">
+        <div className="successBox" role="status" aria-live="polite">
           <strong>Contraseña temporal de {temporaryPasswordFor}</strong>
           <p><code>{temporaryPassword}</code></p>
           <p className="hint">
