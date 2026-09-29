@@ -141,7 +141,7 @@
 - [x] Plantillas institucionales HTML para correo.
 - [x] Vista de entregas/fallos de correo para coordinación.
 - [x] Reenvío manual de mensajes fallidos.
-- [ ] Adjuntos en comunicaciones cuando sean necesarios.
+- [x] Adjuntos en comunicaciones cuando sean necesarios.
 - [x] Preferencias básicas de notificación por usuario.
 
 ## 10. Planificación y «mi hora de coordinación»
@@ -180,7 +180,7 @@
 - [x] Datos enviados a IA limitados a información agregada.
 - [x] Editor del borrador de memoria antes de guardar/presentar.
 - [x] Guardar la versión IA como narrativa del snapshot.
-- [ ] Exportación DOCX/ODT de memoria.
+- [x] Exportación DOCX/ODT de memoria.
 - [x] Comparativa entre periodos del mismo curso.
 - [x] Comparativa interanual.
 - [x] Alertas automáticas por indicadores anómalos o incompletos.
