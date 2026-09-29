@@ -4,6 +4,7 @@ import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { SessionGuard } from '../auth/session.guard';
 import type { AuthenticatedUser } from '../auth/auth.types';
+import { CONTENT_WRITE_ROLES } from '../auth/role-policy';
 import { CommunicationsService } from './communications.service';
 import { CreateCommunicationDto } from './dto/create-communication.dto';
 import { RespondCommunicationDto } from './dto/respond-communication.dto';
@@ -68,6 +69,7 @@ export class CommunicationsController {
   }
 
   @Post(':id/respond')
+  @Roles(...CONTENT_WRITE_ROLES)
   respond(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
