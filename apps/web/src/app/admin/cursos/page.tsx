@@ -274,8 +274,8 @@ export default function AcademicYearsPage() {
         <a className="secondaryButton" href="/admin">Administración</a>
       </div>
 
-      {message && <div className="notice">{message}</div>}
-      {error && <div className="errorBox">{error}</div>}
+      {message && <div className="notice" role="status" aria-live="polite">{message}</div>}
+      {error && <div className="errorBox" role="alert">{error}</div>}
       {loading && !error && (
         <div className="loadingState" role="status" aria-live="polite">
           <span className="loadingSpinner" aria-hidden="true" />
@@ -342,7 +342,7 @@ export default function AcademicYearsPage() {
           </div>
 
           {year?.closedAt && (
-            <div className="notice">
+            <div className="notice" role="status" aria-live="polite">
               Curso cerrado el {new Date(year.closedAt).toLocaleDateString('es-ES')}. Sus coordinaciones se muestran en modo histórico.
             </div>
           )}
