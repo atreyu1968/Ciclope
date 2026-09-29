@@ -29,8 +29,11 @@ export default function IntegrationsAdminPage() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [testing, setTesting] = useState('');
+  const [saving, setSaving] = useState('');
+  const [loading, setLoading] = useState(true);
 
   async function load() {
+    setLoading(true);
     const response = await fetch('/api/integrations');
     if (response.status === 401) {
       router.push('/login');
@@ -39,15 +42,19 @@ export default function IntegrationsAdminPage() {
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
       setError(errorMessage(body, 'No se pudo cargar la configuración de integraciones.'));
+      setLoading(false);
       return;
     }
+    setError('');
     setSettings(body);
+    setLoading(false);
   }
 
   useEffect(() => { void load(); }, []);
 
   async function saveResend(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setSaving('resend');
     setMessage('');
     setError('');
     const form = new FormData(event.currentTarget);
@@ -62,6 +69,7 @@ export default function IntegrationsAdminPage() {
       }),
     });
     const body = await response.json().catch(() => ({}));
+    setSaving('');
     if (!response.ok) {
       setError(errorMessage(body, 'No se pudo guardar Resend.'));
       return;
@@ -73,6 +81,7 @@ export default function IntegrationsAdminPage() {
 
   async function saveAi(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setSaving('ai');
     setMessage('');
     setError('');
     const form = new FormData(event.currentTarget);
@@ -88,6 +97,7 @@ export default function IntegrationsAdminPage() {
       }),
     });
     const body = await response.json().catch(() => ({}));
+    setSaving('');
     if (!response.ok) {
       setError(errorMessage(body, 'No se pudo guardar la API de IA.'));
       return;
@@ -114,7 +124,16 @@ export default function IntegrationsAdminPage() {
   }
 
   if (!settings) {
-    return <main className="shell"><p>{error || 'Cargando integraciones…'}</p></main>;
+    return (
+      <main className="shell">
+        {error ? <div className="errorBox">{error}</div> : (
+          <div className="loadingState" role="status" aria-live="polite">
+            <span className="loadingSpinner" aria-hidden="true" />
+            <strong>{loading ? 'Cargando integraciones…' : 'Preparando configuración…'}</strong>
+          </div>
+        )}
+      </main>
+    );
   }
 
   return (
@@ -163,8 +182,10 @@ export default function IntegrationsAdminPage() {
             </label>
             <p className="hint">El dominio del remitente debe estar autorizado en tu cuenta de Resend.</p>
             <div className="rowActions">
-              <button className="primaryButton">Guardar Resend</button>
-              <button className="secondaryButton" type="button" disabled={!settings.resend.enabled || testing === 'resend'} onClick={() => void test('resend')}>
+              <button className="primaryButton" disabled={Boolean(saving) || Boolean(testing)}>
+                {saving === 'resend' ? 'Guardando…' : 'Guardar Resend'}
+              </button>
+              <button className="secondaryButton" type="button" disabled={!settings.resend.enabled || Boolean(testing) || Boolean(saving)} onClick={() => void test('resend')}>
                 {testing === 'resend' ? 'Probando…' : 'Enviar prueba'}
               </button>
             </div>
@@ -205,8 +226,10 @@ export default function IntegrationsAdminPage() {
               CÍclope no envía la clave al navegador. Para interpretar informes solo se remiten datos agregados, sin el listado nominal del profesorado.
             </p>
             <div className="rowActions">
-              <button className="primaryButton">Guardar IA</button>
-              <button className="secondaryButton" type="button" disabled={!settings.ai.enabled || testing === 'ai'} onClick={() => void test('ai')}>
+              <button className="primaryButton" disabled={Boolean(saving) || Boolean(testing)}>
+                {saving === 'ai' ? 'Guardando…' : 'Guardar IA'}
+              </button>
+              <button className="secondaryButton" type="button" disabled={!settings.ai.enabled || Boolean(testing) || Boolean(saving)} onClick={() => void test('ai')}>
                 {testing === 'ai' ? 'Probando…' : 'Probar conexión'}
               </button>
             </div>
