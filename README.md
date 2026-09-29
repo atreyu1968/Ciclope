@@ -38,7 +38,9 @@ Reducir la carga administrativa de las coordinaciones y servir como canal asínc
 - cobertura documental y progreso automático de objetivos;
 - formulario inteligente con datos opcionales específicos por red;
 - indicadores automáticos de Innovación, Emprendimiento, IOP y Calidad;
+- informes por periodo para cierres trimestrales, con CSV, PDF e IA sobre el mismo intervalo;
 - hitos oficiales de planificación integrados en cada plan anual;
+- hitos comunes del curso distribuibles a las cuatro redes desde una única acción;
 - seguimiento de tareas, vencimientos y próximos plazos desde el dashboard;
 - recordatorios automáticos de plazos;
 - correo transaccional mediante Resend;
