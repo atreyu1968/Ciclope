@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ActionStatus, CommunicationStatus, PlanTaskStatus, ReportSnapshotStatus, StaffRequestStatus } from '../generated/prisma/client';
+import { ActionStatus, CommunicationStatus, PlanObjectiveStatus, PlanTaskStatus, ReportSnapshotStatus, StaffRequestStatus } from '../generated/prisma/client';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { PrismaService } from '../database/prisma.service';
 
@@ -26,6 +26,8 @@ export class DashboardService {
         unreadCommunications: 0,
         communicationFollowups: 0,
         savedReportSnapshots: 0,
+        inactiveNetworks: [],
+        inactiveObjectives: [],
         estimatedMinutes: 0,
         agendaMinutes: 0,
         deferredPriorityCount: 0,
@@ -52,6 +54,8 @@ export class DashboardService {
       unreadCommunications,
       savedReportSnapshots,
       communications,
+      recentActiveNetworkLinks,
+      inactiveObjectiveCandidates,
     ] = await Promise.all([
       this.prisma.academicYear.findUnique({
         where: { id: user.academicYearId },
@@ -179,7 +183,64 @@ export class DashboardService {
         orderBy: { publishedAt: 'desc' },
         take: 50,
       }),
+      this.prisma.actionNetwork.findMany({
+        where: {
+          ...(global ? {} : { networkId: { in: user.coordinatorNetworkIds } }),
+          action: {
+            academicYearId: user.academicYearId,
+            status: ActionStatus.VALIDATED,
+            activityDate: { gte: new Date(Date.now() - 30 * 24 * 60 * 60_000) },
+          },
+        },
+        select: { networkId: true },
+        distinct: ['networkId'],
+      }),
+      this.prisma.planObjective.findMany({
+        where: {
+          status: { in: [PlanObjectiveStatus.PLANNED, PlanObjectiveStatus.IN_PROGRESS] },
+          plan: {
+            academicYearId: user.academicYearId,
+            ...(global ? {} : { networkId: { in: user.coordinatorNetworkIds } }),
+          },
+          actions: {
+            none: {
+              action: {
+                status: ActionStatus.VALIDATED,
+                activityDate: { gte: new Date(Date.now() - 30 * 24 * 60 * 60_000) },
+              },
+            },
+          },
+        },
+        select: {
+          id: true,
+          title: true,
+          plan: {
+            select: {
+              network: { select: { id: true, name: true } },
+            },
+          },
+        },
+        orderBy: { updatedAt: 'asc' },
+        take: 20,
+      }),
     ]);
+
+    const inactivityMonitoringEnabled = Boolean(
+      year && Date.now() - year.startsAt.getTime() >= 21 * 24 * 60 * 60_000,
+    );
+    const recentlyActiveNetworkIds = new Set(recentActiveNetworkLinks.map((item) => item.networkId));
+    const inactiveNetworks = inactivityMonitoringEnabled
+      ? coordinationNetworks
+          .filter((network) => !recentlyActiveNetworkIds.has(network.id))
+          .map((network) => ({ id: network.id, name: network.name }))
+      : [];
+    const inactiveObjectives = inactivityMonitoringEnabled
+      ? inactiveObjectiveCandidates.map((objective) => ({
+          id: objective.id,
+          title: objective.title,
+          network: objective.plan.network,
+        }))
+      : [];
 
     const communicationItems = communications
       .map((communication) => {
@@ -199,6 +260,8 @@ export class DashboardService {
       communicationFollowups * 2 +
       savedReportSnapshots * 2 +
       returnedOwnActions * 2 +
+      inactiveNetworks.length * 2 +
+      inactiveObjectives.length * 2 +
       Math.min(unreadCommunications, 10);
 
     const focus = [
@@ -225,6 +288,22 @@ export class DashboardService {
         href: '/coordinacion/planes',
         estimatedMinutes: Math.min(15, Math.max(5, overduePlanTasks * 2)),
         reason: 'Hay compromisos del plan anual fuera de plazo; resolverlos reduce el riesgo de incumplir hitos de coordinación.',
+      }] : []),
+      ...(inactiveNetworks.length ? [{
+        key: 'inactive-networks',
+        priority: 'medium',
+        title: `${inactiveNetworks.length} redes sin actividad validada en los últimos 30 días`,
+        href: '/informes',
+        estimatedMinutes: Math.min(10, Math.max(4, inactiveNetworks.length * 2)),
+        reason: 'La falta de actividad reciente puede indicar que una red necesita impulso, registro de actuaciones o revisión del plan.',
+      }] : []),
+      ...(inactiveObjectives.length ? [{
+        key: 'inactive-objectives',
+        priority: 'medium',
+        title: `${inactiveObjectives.length} objetivos sin actividad vinculada en los últimos 30 días`,
+        href: '/coordinacion/planes',
+        estimatedMinutes: Math.min(12, Math.max(4, inactiveObjectives.length * 2)),
+        reason: 'Estos objetivos siguen abiertos pero no muestran actuaciones validadas recientes; conviene revisar su ejecución.',
       }] : []),
       ...(nextPlanDeadline?.dueDate ? [{
         key: 'next-plan-deadline',
@@ -302,6 +381,8 @@ export class DashboardService {
       unreadCommunications,
       communicationFollowups,
       savedReportSnapshots,
+      inactiveNetworks,
+      inactiveObjectives,
       communicationItems: communicationItems.slice(0, 5),
       estimatedMinutes: Math.min(rawMinutes, 120),
       agendaMinutes,
