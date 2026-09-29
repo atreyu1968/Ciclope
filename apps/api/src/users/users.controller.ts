@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
@@ -6,7 +6,11 @@ import { SessionGuard } from '../auth/session.guard';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { CreateUserDto } from './dto/create-user.dto';
 import { ImportUsersDto } from './dto/import-users.dto';
+import { ResetUserPasswordDto } from './dto/reset-user-password.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersService } from './users.service';
+
+const ADMIN = ['SUPERADMIN', 'ADMIN_CENTRO', 'DIRECCION'];
 
 @Controller('users')
 @UseGuards(SessionGuard, RolesGuard)
@@ -20,14 +24,34 @@ export class UsersController {
   }
 
   @Post()
-  @Roles('SUPERADMIN', 'ADMIN_CENTRO', 'DIRECCION')
+  @Roles(...ADMIN)
   create(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateUserDto) {
-    return this.users.create(user.centerId, dto);
+    return this.users.create(user, dto);
+  }
+
+  @Patch(':id')
+  @Roles(...ADMIN)
+  update(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: UpdateUserDto,
+  ) {
+    return this.users.update(user, id, dto);
+  }
+
+  @Post(':id/reset-password')
+  @Roles(...ADMIN)
+  resetPassword(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: ResetUserPasswordDto,
+  ) {
+    return this.users.resetPassword(user, id, dto);
   }
 
   @Post('import')
-  @Roles('SUPERADMIN', 'ADMIN_CENTRO', 'DIRECCION')
+  @Roles(...ADMIN)
   importMany(@CurrentUser() user: AuthenticatedUser, @Body() dto: ImportUsersDto) {
-    return this.users.importMany(user.centerId, dto);
+    return this.users.importMany(user, dto);
   }
 }
