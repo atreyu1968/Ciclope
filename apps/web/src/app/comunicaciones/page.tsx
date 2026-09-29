@@ -89,7 +89,7 @@ export default function CommunicationsInboxPage() {
           <a className="primaryButton" href="/comunicaciones/nueva">Nueva comunicación</a>
         </div>
       </div>
-      {message && <div className="errorBox">{message}</div>}
+      {message && <div className="errorBox" role="alert">{message}</div>}
       {loading && !message && (
         <div className="loadingState" role="status" aria-live="polite">
           <span className="loadingSpinner" aria-hidden="true" />
