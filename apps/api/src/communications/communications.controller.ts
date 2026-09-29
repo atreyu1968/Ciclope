@@ -47,6 +47,21 @@ export class CommunicationsController {
     return this.communications.sent(user);
   }
 
+  @Get('mail-jobs')
+  @Roles(...PUBLISHERS)
+  mailJobs(@CurrentUser() user: AuthenticatedUser) {
+    return this.communications.mailJobs(user);
+  }
+
+  @Post('mail-jobs/:jobId/retry')
+  @Roles(...PUBLISHERS)
+  retryMailJob(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('jobId') jobId: string,
+  ) {
+    return this.communications.retryMailJob(user, jobId);
+  }
+
   @Patch(':id/read')
   read(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     return this.communications.markRead(user, id);
