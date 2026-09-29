@@ -259,29 +259,69 @@ export class ActionsService {
     });
   }
 
-  findAll(user: AuthenticatedUser, status?: string) {
+  findAll(
+    user: AuthenticatedUser,
+    status?: string,
+    networkId?: string,
+    familyId?: string,
+    teacherId?: string,
+    from?: string,
+    to?: string,
+  ) {
     if (!user.academicYearId) return [];
 
     const parsedStatus = status && Object.values(ActionStatus).includes(status as ActionStatus)
       ? status as ActionStatus
       : undefined;
 
+    if (networkId && !this.canManageAll(user) && !user.coordinatorNetworkIds.includes(networkId)) {
+      throw new ForbiddenException('No puedes consultar actuaciones de otra red.');
+    }
+
+    const fromDate = from ? new Date(/^\d{4}-\d{2}-\d{2}$/.test(from) ? `${from}T00:00:00.000Z` : from) : undefined;
+    const toDate = to ? new Date(/^\d{4}-\d{2}-\d{2}$/.test(to) ? `${to}T23:59:59.999Z` : to) : undefined;
+    if (fromDate && Number.isNaN(fromDate.getTime())) {
+      throw new BadRequestException('La fecha inicial del filtro no es válida.');
+    }
+    if (toDate && Number.isNaN(toDate.getTime())) {
+      throw new BadRequestException('La fecha final del filtro no es válida.');
+    }
+    if (fromDate && toDate && fromDate > toDate) {
+      throw new BadRequestException('La fecha inicial no puede ser posterior a la fecha final.');
+    }
+
+    const networkFilter = networkId
+      ? { networks: { some: { networkId } } }
+      : !this.canManageAll(user)
+        ? { networks: { some: { networkId: { in: user.coordinatorNetworkIds } } } }
+        : {};
+
     return this.prisma.action.findMany({
       where: {
         academicYearId: user.academicYearId,
         ...(parsedStatus ? { status: parsedStatus } : {}),
-        ...(!this.canManageAll(user)
-          ? { networks: { some: { networkId: { in: user.coordinatorNetworkIds } } } }
+        ...networkFilter,
+        ...(familyId
+          ? { groups: { some: { teachingGroup: { professionalFamilyId: familyId } } } }
+          : {}),
+        ...(teacherId ? { submittedById: teacherId } : {}),
+        ...((fromDate || toDate)
+          ? {
+              activityDate: {
+                ...(fromDate ? { gte: fromDate } : {}),
+                ...(toDate ? { lte: toDate } : {}),
+              },
+            }
           : {}),
       },
       include: {
         networks: { include: { network: true } },
         groups: { include: { teachingGroup: { include: { professionalFamily: true } } } },
         evidence: true,
-        submittedBy: { select: { firstName: true, lastName: true, email: true } },
+        submittedBy: { select: { id: true, firstName: true, lastName: true, email: true } },
       },
       orderBy: { createdAt: 'desc' },
-      take: 100,
+      take: 250,
     });
   }
 
