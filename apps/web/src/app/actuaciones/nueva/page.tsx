@@ -18,12 +18,22 @@ type Objective = {
   description?: string | null;
   plan: { networkId: string; network: { id: string; name: string } };
 };
+type FormField = {
+  key: string;
+  label: string;
+  type: 'select' | 'boolean' | 'text';
+  help?: string;
+  options?: Array<{ value: string; label: string }>;
+};
+type FormConfig = Record<string, FormField[]>;
 
 export default function NewActionPage() {
   const router = useRouter();
   const [networks, setNetworks] = useState<Network[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [objectives, setObjectives] = useState<Objective[]>([]);
+  const [formConfig, setFormConfig] = useState<FormConfig>({});
+  const [networkDetails, setNetworkDetails] = useState<Record<string, Record<string, string | boolean>>>({});
   const [me, setMe] = useState<Me | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
@@ -37,16 +47,18 @@ export default function NewActionPage() {
       fetch('/api/networks'),
       fetch('/api/structure/groups'),
       fetch('/api/plans/available-objectives'),
-    ]).then(async ([meResponse, networksResponse, groupsResponse, objectivesResponse]) => {
+      fetch('/api/actions/form-config'),
+    ]).then(async ([meResponse, networksResponse, groupsResponse, objectivesResponse, configResponse]) => {
       if (meResponse.status === 401) {
         router.push('/login');
         return;
       }
-      if (!meResponse.ok || !networksResponse.ok || !groupsResponse.ok || !objectivesResponse.ok) throw new Error();
+      if (!meResponse.ok || !networksResponse.ok || !groupsResponse.ok || !objectivesResponse.ok || !configResponse.ok) throw new Error();
       setMe(await meResponse.json());
       setNetworks(await networksResponse.json());
       setGroups(await groupsResponse.json());
       setObjectives(await objectivesResponse.json());
+      setFormConfig(await configResponse.json());
       setState('idle');
     }).catch(() => setState('error'));
   }, [router]);
@@ -81,6 +93,11 @@ export default function NewActionPage() {
         objectiveIds: selectedObjectives.filter((id) =>
           objectives.some((objective) => objective.id === id && selected.includes(objective.plan.networkId)),
         ),
+        networkDetails: Object.fromEntries(
+          networks
+            .filter((network) => selected.includes(network.id))
+            .map((network) => [network.code, networkDetails[network.code] || {}]),
+        ),
       }),
     });
     if (response.ok) {
@@ -94,7 +111,33 @@ export default function NewActionPage() {
   }
 
   function toggleNetwork(id: string) {
-    setSelected((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+    const network = networks.find((item) => item.id === id);
+    setSelected((current) => {
+      if (!current.includes(id)) return [...current, id];
+      if (network) {
+        setNetworkDetails((details) => {
+          const next = { ...details };
+          delete next[network.code];
+          return next;
+        });
+      }
+      setSelectedObjectives((items) => items.filter((objectiveId) =>
+        objectives.some((objective) => objective.id === objectiveId && objective.plan.networkId !== id),
+      ));
+      return current.filter((item) => item !== id);
+    });
+  }
+
+  function setNetworkDetail(code: string, key: string, value: string | boolean | undefined) {
+    setNetworkDetails((current) => {
+      const next = { ...current, [code]: { ...(current[code] || {}) } };
+      if (value === undefined || value === '') {
+        delete next[code][key];
+      } else {
+        next[code][key] = value;
+      }
+      return next;
+    });
   }
 
   function toggleGroup(id: string) {
@@ -127,7 +170,7 @@ export default function NewActionPage() {
           <p>Ha quedado registrada y pendiente de validación por la coordinación correspondiente.</p>
           <div className="rowActions">
             {createdActionId && <a className="primaryButton" href={`/actuaciones/${createdActionId}/evidencias`}>Añadir evidencias</a>}
-            <button className="secondaryButton" onClick={() => { setState('idle'); setSelected([]); setSelectedGroups([]); setSelectedObjectives([]); setCreatedActionId(null); }}>Registrar otra</button>
+            <button className="secondaryButton" onClick={() => { setState('idle'); setSelected([]); setSelectedGroups([]); setSelectedObjectives([]); setNetworkDetails({}); setCreatedActionId(null); }}>Registrar otra</button>
           </div>
         </div>
       ) : (
@@ -192,7 +235,74 @@ export default function NewActionPage() {
 
           {selected.length > 0 && (
             <fieldset>
-              <legend>4. Objetivos del plan anual</legend>
+              <legend>4. Datos útiles para la red <span className="hint">(opcional)</span></legend>
+              <p className="hint">
+                Solo se muestran los datos que después sirven para indicadores y memoria. Si no conoces alguno, déjalo sin indicar.
+              </p>
+              <div className="networkDetailGrid">
+                {networks.filter((network) => selected.includes(network.id)).map((network) => {
+                  const fields = formConfig[network.code] || [];
+                  if (!fields.length) return null;
+                  return (
+                    <div className="networkDetailCard" key={network.id}>
+                      <h3>{network.name}</h3>
+                      {fields.map((field) => {
+                        const current = networkDetails[network.code]?.[field.key];
+                        if (field.type === 'boolean') {
+                          return (
+                            <label key={field.key}>{field.label}
+                              <select
+                                value={current === true ? 'true' : current === false ? 'false' : ''}
+                                onChange={(event) => setNetworkDetail(
+                                  network.code,
+                                  field.key,
+                                  event.target.value === '' ? undefined : event.target.value === 'true',
+                                )}
+                              >
+                                <option value="">No indicado</option>
+                                <option value="true">Sí</option>
+                                <option value="false">No</option>
+                              </select>
+                              {field.help && <span className="hint">{field.help}</span>}
+                            </label>
+                          );
+                        }
+                        if (field.type === 'select') {
+                          return (
+                            <label key={field.key}>{field.label}
+                              <select
+                                value={typeof current === 'string' ? current : ''}
+                                onChange={(event) => setNetworkDetail(network.code, field.key, event.target.value || undefined)}
+                              >
+                                <option value="">No indicado</option>
+                                {field.options?.map((option) => (
+                                  <option key={option.value} value={option.value}>{option.label}</option>
+                                ))}
+                              </select>
+                              {field.help && <span className="hint">{field.help}</span>}
+                            </label>
+                          );
+                        }
+                        return (
+                          <label key={field.key}>{field.label}
+                            <input
+                              value={typeof current === 'string' ? current : ''}
+                              onChange={(event) => setNetworkDetail(network.code, field.key, event.target.value || undefined)}
+                            />
+                            {field.help && <span className="hint">{field.help}</span>}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+            </fieldset>
+          )}
+
+          {selected.length > 0 && (
+            <fieldset>
+              <legend>5. Objetivos del plan anual</legend>
               {visibleObjectives.length ? (
                 <>
                   <p className="hint">Opcional. Marca los objetivos a los que contribuye esta actuación. El progreso del plan se actualizará cuando coordinación la valide.</p>
