@@ -263,6 +263,12 @@ export default function CoordinationActionsPage() {
 
       {error && <div className="errorBox">{error}</div>}
       {message && <div className="notice">{message}</div>}
+      {loading && !error && (
+        <div className="loadingState" role="status" aria-live="polite">
+          <span className="loadingSpinner" aria-hidden="true" />
+          <strong>Cargando actuaciones y filtros…</strong>
+        </div>
+      )}
 
       {!error && actions.some((action) => action.status === 'PENDING_VALIDATION') && (
         <div className="bulkBar">
@@ -274,7 +280,11 @@ export default function CoordinationActionsPage() {
       )}
 
       {!error && !loading && actions.length === 0 && (
-        <div className="panel"><h2>Sin resultados</h2><p className="empty">No hay actuaciones que coincidan con los filtros seleccionados.</p></div>
+        <div className="emptyState">
+          <h2>Sin actuaciones en esta vista</h2>
+          <p>No hay actuaciones que coincidan con los filtros seleccionados. Puedes restablecerlos para volver a la bandeja habitual.</p>
+          <div className="rowActions"><button className="secondaryButton" type="button" onClick={clearFilters}>Restablecer filtros</button></div>
+        </div>
       )}
 
       <div className="actionQueue">
