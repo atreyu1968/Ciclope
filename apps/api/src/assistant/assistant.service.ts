@@ -83,7 +83,18 @@ export class AssistantService {
       where: { id: planId },
       include: {
         academicYear: true,
-        network: { select: { id: true, name: true } },
+        network: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            centerConfigs: {
+              where: { centerId: user.centerId },
+              select: { description: true, institutionalObjectives: true },
+              take: 1,
+            },
+          },
+        },
         objectives: {
           select: {
             title: true,
@@ -122,6 +133,10 @@ export class AssistantService {
       user.centerId,
       {
         network: plan.network.name,
+        institutionalDescription: plan.network.centerConfigs[0]?.description ?? plan.network.description,
+        institutionalObjectives: Array.isArray(plan.network.centerConfigs[0]?.institutionalObjectives)
+          ? plan.network.centerConfigs[0]!.institutionalObjectives
+          : [],
         title: plan.title,
         summary: plan.summary,
         status: plan.status,
