@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
 import {
   ActionStatus,
   AnnualPlanStatus,
@@ -14,8 +14,59 @@ import { CreateTaskDto } from './dto/create-task.dto';
 import { officialPlanDeadlines } from './official-deadlines.config';
 
 @Injectable()
-export class PlansService {
+export class PlansService implements OnModuleInit {
   constructor(private readonly prisma: PrismaService) {}
+
+  async onModuleInit() {
+    const plans = await this.prisma.annualPlan.findMany({
+      include: {
+        academicYear: { select: { id: true, name: true } },
+        network: { select: { id: true } },
+      },
+    });
+
+    for (const plan of plans) {
+      await this.ensureOfficialDeadlines(
+        plan.id,
+        plan.academicYear.id,
+        plan.academicYear.name,
+        plan.network.id,
+      );
+    }
+  }
+
+  private async ensureOfficialDeadlines(
+    planId: string,
+    academicYearId: string,
+    academicYearName: string,
+    networkId: string,
+  ) {
+    const deadlines = officialPlanDeadlines(academicYearName);
+    if (!deadlines.length) return;
+
+    const primaryCoordinator = await this.prisma.networkCoordinator.findFirst({
+      where: {
+        academicYearId,
+        networkId,
+        user: { active: true },
+      },
+      orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+      select: { userId: true },
+    });
+
+    await this.prisma.planTask.createMany({
+      data: deadlines.map((deadline) => ({
+        planId,
+        title: deadline.title,
+        description: deadline.description,
+        dueDate: new Date(deadline.dueDate),
+        ownerId: primaryCoordinator?.userId,
+        official: true,
+        officialKey: deadline.key,
+      })),
+      skipDuplicates: true,
+    });
+  }
 
   private isGlobal(user: AuthenticatedUser) {
     return ['SUPERADMIN', 'ADMIN_CENTRO', 'DIRECCION', 'COORDINADOR_CICLOPE']
@@ -128,6 +179,7 @@ export class PlansService {
                 dueDate: new Date(deadline.dueDate),
                 ownerId: primaryCoordinator?.userId,
                 official: true,
+                officialKey: deadline.key,
               })),
             }
           : undefined,
