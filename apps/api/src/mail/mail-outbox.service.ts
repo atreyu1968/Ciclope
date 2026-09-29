@@ -138,7 +138,7 @@ export class MailOutboxService implements OnModuleInit, OnModuleDestroy {
 
     const appUrl = process.env.APP_BASE_URL?.replace(/\/$/, '');
     const footer = appUrl
-      ? `\n\nConsulta la comunicación y responde, si procede, en: ${appUrl}/comunicaciones`
+      ? `\n\nConsulta la comunicación, descarga sus posibles adjuntos y responde, si procede, en: ${appUrl}/comunicaciones`
       : '';
 
     await this.prisma.emailOutbox.createMany({
