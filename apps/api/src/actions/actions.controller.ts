@@ -41,6 +41,12 @@ export class ActionsController {
     return this.actions.findMine(user);
   }
 
+  @Get(':id/history')
+  @Roles(...COORDINATION_ROLES)
+  history(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.actions.history(id, user);
+  }
+
   @Get(':id')
   mineOne(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.actions.findMineOne(id, user);
