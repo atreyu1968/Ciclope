@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { ActionStatus, NetworkCode, PlanMetric } from '../generated/prisma/client';
+import { ActionStatus, NetworkCode, PlanMetric, PlanTaskStatus } from '../generated/prisma/client';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { PrismaService } from '../database/prisma.service';
 import { ACTION_NETWORK_FIELDS } from '../actions/action-form.config';
@@ -129,6 +129,16 @@ export class ReportsService {
               },
             },
             orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+          },
+          tasks: {
+            select: {
+              id: true,
+              title: true,
+              status: true,
+              dueDate: true,
+              official: true,
+            },
+            orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
           },
         },
         orderBy: { network: { sortOrder: 'asc' } },
@@ -319,6 +329,13 @@ export class ReportsService {
         ? Math.round(measurable.reduce((sum, objective) => sum + (objective.progressPercent ?? 0), 0) / measurable.length)
         : null;
 
+      const now = new Date();
+      const doneTasks = plan.tasks.filter((task) => task.status === PlanTaskStatus.DONE).length;
+      const openTasks = plan.tasks.filter((task) =>
+        [PlanTaskStatus.TODO, PlanTaskStatus.IN_PROGRESS].includes(task.status),
+      );
+      const overdueTasks = openTasks.filter((task) => task.dueDate && task.dueDate < now).length;
+
       return {
         id: plan.id,
         title: plan.title,
@@ -327,6 +344,20 @@ export class ReportsService {
         objectives,
         measurableObjectives: measurable.length,
         averageProgressPercent,
+        taskSummary: {
+          total: plan.tasks.length,
+          done: doneTasks,
+          pending: openTasks.length,
+          overdue: overdueTasks,
+          officialMilestones: plan.tasks
+            .filter((task) => task.official)
+            .map((task) => ({
+              id: task.id,
+              title: task.title,
+              status: task.status,
+              dueDate: task.dueDate,
+            })),
+        },
       };
     });
 
