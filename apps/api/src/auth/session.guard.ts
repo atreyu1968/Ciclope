@@ -1,4 +1,10 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import { PrismaService } from '../database/prisma.service';
 import { AuthenticatedRequest } from './auth.types';
@@ -24,7 +30,7 @@ export class SessionGuard implements CanActivate {
   constructor(private readonly prisma: PrismaService) {}
 
   async canActivate(context: ExecutionContext) {
-    const request = context.switchToHttp().getRequest<AuthenticatedRequest & { headers: { cookie?: string } }>();
+    const request = context.switchToHttp().getRequest<AuthenticatedRequest & { headers: { cookie?: string }; originalUrl?: string }>();
     const token = readCookie(request.headers.cookie, 'ciclope_session');
     if (!token) throw new UnauthorizedException('Sesión no iniciada.');
 
@@ -79,12 +85,25 @@ export class SessionGuard implements CanActivate {
       firstName: session.user.firstName,
       lastName: session.user.lastName,
       roles: [...roleSet],
+      mustChangePassword: session.user.mustChangePassword,
       academicYearId: activeYear?.id,
       academicYearName: activeYear?.name,
       centerName: session.user.center.name,
       coordinatorNetworkIds: session.user.networkCoordinations.map((item) => item.networkId),
       coordinatorNetworkCodes: session.user.networkCoordinations.map((item) => item.network.code),
     };
+
+    if (session.user.mustChangePassword) {
+      const path = (request.originalUrl || '').split('?')[0];
+      const allowed = new Set([
+        '/api/auth/me',
+        '/api/auth/change-password',
+        '/api/auth/logout',
+      ]);
+      if (!allowed.has(path)) {
+        throw new ForbiddenException('Debes cambiar la contraseña temporal antes de continuar.');
+      }
+    }
 
     return true;
   }
