@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 type Network = { id: string; name: string; code: string };
@@ -24,6 +24,11 @@ export default function NewCommunicationPage() {
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [resendConfigured, setSmtpConfigured] = useState<boolean | null>(null);
+  const [aiBrief, setAiBrief] = useState('');
+  const [aiDraft, setAiDraft] = useState('');
+  const [aiError, setAiError] = useState('');
+  const [aiBusy, setAiBusy] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     Promise.all([
@@ -56,6 +61,58 @@ export default function NewCommunicationPage() {
     setSelectedFamilies((current) => current.includes(id)
       ? current.filter((item) => item !== id)
       : [...current, id]);
+  }
+
+  async function generateDraft() {
+    if (!aiBrief.trim() || !formRef.current) return;
+    setAiBusy(true);
+    setAiDraft('');
+    setAiError('');
+    const current = new FormData(formRef.current);
+    const audience = allFp
+      ? 'Todo el profesorado de FP'
+      : [
+          selectedFamilies.length ? 'Familias seleccionadas: ' + selectedFamilies.length : '',
+          morning ? 'turno de mañana' : '',
+          afternoon ? 'turno de tarde' : '',
+        ].filter(Boolean).join(' · ');
+    const response = await fetch('/api/assistant/communication-draft', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        brief: aiBrief.trim(),
+        title: current.get('title') || undefined,
+        currentBody: current.get('body') || undefined,
+        audience,
+      }),
+    });
+    const body = await response.json().catch(() => ({}));
+    setAiBusy(false);
+    if (!response.ok) {
+      setAiError(Array.isArray(body.message) ? body.message.join(' ') : body.message || 'No se pudo generar el borrador.');
+      return;
+    }
+    setAiDraft(body.text || '');
+  }
+
+  function applyDraft() {
+    if (!formRef.current || !aiDraft) return;
+    const titleInput = formRef.current.elements.namedItem('title') as HTMLInputElement | null;
+    const bodyInput = formRef.current.elements.namedItem('body') as HTMLTextAreaElement | null;
+    const lines = aiDraft.split('\n');
+    const titleLine = lines.find((line) => /^TÍTULO\s*:/i.test(line));
+    const titleIndex = titleLine ? lines.indexOf(titleLine) : -1;
+    if (titleInput && titleLine) {
+      titleInput.value = titleLine.replace(/^TÍTULO\s*:/i, '').trim().slice(0, 180);
+    }
+    if (bodyInput) {
+      bodyInput.value = lines
+        .filter((_, index) => index !== titleIndex)
+        .join('\n')
+        .trim()
+        .slice(0, 12000);
+    }
+    setMessage('Borrador de IA aplicado al formulario. Revísalo antes de publicar.');
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -113,7 +170,41 @@ export default function NewCommunicationPage() {
         </div>
       )}
 
-      <form className="actionForm" onSubmit={submit}>
+      <section className="panel aiAssistBox">
+        <div className="panelHeader">
+          <div>
+            <p className="eyebrow">Asistente de IA</p>
+            <h2>Preparar un borrador</h2>
+          </div>
+          <span className="badge warningChip">Requiere revisión humana</span>
+        </div>
+        <p className="hint">Describe qué necesitas comunicar. La IA propondrá un texto, pero no publicará ni enviará nada.</p>
+        <label>Instrucciones para el borrador
+          <textarea
+            rows={4}
+            maxLength={4000}
+            value={aiBrief}
+            onChange={(event) => setAiBrief(event.target.value)}
+            placeholder="Ej.: Convocar al profesorado de FP a una reunión el jueves, explicando el objetivo y pidiendo confirmación."
+          />
+        </label>
+        <div className="rowActions">
+          <button className="secondaryButton" type="button" disabled={aiBusy || aiBrief.trim().length < 3} onClick={() => void generateDraft()}>
+            {aiBusy ? 'Generando…' : 'Generar borrador con IA'}
+          </button>
+        </div>
+        {aiError && <div className="errorBox">{aiError}</div>}
+        {aiDraft && (
+          <div className="aiResult">
+            <strong>Borrador generado</strong>
+            <pre>{aiDraft}</pre>
+            <p className="aiReviewNotice">Texto generado con IA. Comprueba fechas, destinatarios, compromisos y cualquier dato antes de utilizarlo.</p>
+            <button className="primaryButton" type="button" onClick={applyDraft}>Aplicar al formulario</button>
+          </div>
+        )}
+      </section>
+
+      <form ref={formRef} className="actionForm" onSubmit={submit}>
         <fieldset>
           <legend>1. Mensaje</legend>
           <label>Origen
