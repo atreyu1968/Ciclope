@@ -30,6 +30,7 @@ export default function HistoricalReportsPage() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [workingId, setWorkingId] = useState('');
 
   useEffect(() => {
     fetch('/api/academic-years').then(async (response) => {
@@ -73,6 +74,7 @@ export default function HistoricalReportsPage() {
   }, [yearId]);
 
   async function changeStatus(id: string, status: 'SAVED' | 'SUBMITTED') {
+    setWorkingId(id);
     setMessage('');
     setError('');
     const response = await fetch('/api/reports/snapshots/' + id + '/status', {
@@ -82,11 +84,13 @@ export default function HistoricalReportsPage() {
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
+      setWorkingId('');
       setError(bodyMessage(body, 'No se pudo cambiar el estado del corte.'));
       return;
     }
     setMessage(status === 'SUBMITTED' ? 'Informe marcado como entregado.' : 'Informe devuelto a estado guardado.');
     await loadSnapshots(yearId);
+    setWorkingId('');
   }
 
   return (
@@ -158,12 +162,12 @@ export default function HistoricalReportsPage() {
               </span>
               <a className="primaryButton" href={'/informes/historico/' + snapshot.id}>Abrir</a>
               {snapshot.status === 'SAVED' ? (
-                <button className="secondaryButton" onClick={() => void changeStatus(snapshot.id, 'SUBMITTED')}>
-                  Marcar entregado
+                <button className="secondaryButton" disabled={Boolean(workingId)} onClick={() => void changeStatus(snapshot.id, 'SUBMITTED')}>
+                  {workingId === snapshot.id ? 'Actualizando…' : 'Marcar entregado'}
                 </button>
               ) : (
-                <button className="textButton" onClick={() => void changeStatus(snapshot.id, 'SAVED')}>
-                  Reabrir
+                <button className="textButton" disabled={Boolean(workingId)} onClick={() => void changeStatus(snapshot.id, 'SAVED')}>
+                  {workingId === snapshot.id ? 'Actualizando…' : 'Reabrir'}
                 </button>
               )}
             </div>
