@@ -28,8 +28,10 @@ export default function MyActionsPage() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [workingId, setWorkingId] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setLoading(true);
     fetch('/api/actions/mine').then(async (response) => {
       if (response.status === 401) {
         router.push('/login');
@@ -40,6 +42,10 @@ export default function MyActionsPage() {
         return;
       }
       setActions(await response.json());
+    }).catch(() => {
+      setError('No se pudieron cargar tus actuaciones.');
+    }).finally(() => {
+      setLoading(false);
     });
   }, [router]);
 
@@ -74,6 +80,13 @@ export default function MyActionsPage() {
 
       {message && <div className="notice">{message}</div>}
       {error && <div className="errorBox">{error}</div>}
+
+      {loading && !error && (
+        <div className="loadingState" role="status" aria-live="polite">
+          <span className="loadingSpinner" aria-hidden="true" />
+          <strong>Cargando tus actuaciones…</strong>
+        </div>
+      )}
 
       <div className="actionQueue">
         {actions.map((action) => (
@@ -116,7 +129,13 @@ export default function MyActionsPage() {
             </div>
           </article>
         ))}
-        {!actions.length && !error && <div className="panel"><h2>Aún no has registrado actuaciones</h2></div>}
+        {!loading && !actions.length && !error && (
+          <div className="emptyState">
+            <h2>Aún no has registrado actuaciones</h2>
+            <p>Cuando registres una actividad de cualquiera de las redes aparecerá aquí con su estado de validación y sus evidencias.</p>
+            <div className="rowActions"><a className="primaryButton" href="/actuaciones/nueva">Registrar la primera actuación</a></div>
+          </div>
+        )}
       </div>
     </main>
   );
