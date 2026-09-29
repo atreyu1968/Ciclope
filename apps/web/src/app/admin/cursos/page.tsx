@@ -81,6 +81,7 @@ export default function AcademicYearsPage() {
 
   async function createYear(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setWorking(true);
     setMessage('');
     setError('');
     const form = new FormData(event.currentTarget);
@@ -90,6 +91,7 @@ export default function AcademicYearsPage() {
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
+      setWorking(false);
       setError(messageFrom(body, 'No se pudo crear el curso académico.'));
       return;
     }
@@ -97,6 +99,7 @@ export default function AcademicYearsPage() {
     event.currentTarget.reset();
     await load();
     setSelectedYear(body.id);
+    setWorking(false);
   }
 
   async function activate(id: string) {
@@ -186,6 +189,7 @@ export default function AcademicYearsPage() {
 
   async function assignNetwork() {
     if (!selectedYear || !userId || !networkId) return;
+    setWorking(true);
     setError('');
     const response = await fetch(`/api/academic-years/${selectedYear}/network-coordinators`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
@@ -193,15 +197,18 @@ export default function AcademicYearsPage() {
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
+      setWorking(false);
       setError(messageFrom(body, 'No se pudo asignar la coordinación.'));
       return;
     }
     setMessage('Coordinación asignada.');
     await load();
+    setWorking(false);
   }
 
   async function assignCiclope() {
     if (!selectedYear || !userId) return;
+    setWorking(true);
     setError('');
     const response = await fetch(`/api/academic-years/${selectedYear}/ciclope-coordinators`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
@@ -209,11 +216,13 @@ export default function AcademicYearsPage() {
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
+      setWorking(false);
       setError(messageFrom(body, 'No se pudo asignar CÍCLOPE.'));
       return;
     }
     setMessage('Coordinación CÍCLOPE asignada.');
     await load();
+    setWorking(false);
   }
 
   async function removeNetwork(id: string) {
@@ -304,7 +313,9 @@ export default function AcademicYearsPage() {
               <label>Inicio<input type="date" name="startsAt" required /></label>
               <label>Fin<input type="date" name="endsAt" required /></label>
             </div>
-            <button className="secondaryButton">Crear curso</button>
+            <button className="secondaryButton" disabled={working}>
+              {working ? 'Procesando…' : 'Crear curso'}
+            </button>
           </form>
         </article>
 
@@ -346,8 +357,12 @@ export default function AcademicYearsPage() {
               <option value="">Selecciona red</option>
               {networks.map((network) => <option key={network.id} value={network.id}>{network.name}</option>)}
             </select>
-            <button className="primaryButton" type="button" disabled={Boolean(year?.closedAt)} onClick={() => void assignNetwork()}>Añadir red</button>
-            <button className="secondaryButton" type="button" disabled={Boolean(year?.closedAt)} onClick={() => void assignCiclope()}>Añadir CÍCLOPE</button>
+            <button className="primaryButton" type="button" disabled={Boolean(year?.closedAt) || working || !userId || !networkId} onClick={() => void assignNetwork()}>
+              {working ? 'Procesando…' : 'Añadir red'}
+            </button>
+            <button className="secondaryButton" type="button" disabled={Boolean(year?.closedAt) || working || !userId} onClick={() => void assignCiclope()}>
+              {working ? 'Procesando…' : 'Añadir CÍCLOPE'}
+            </button>
           </div>
 
           <div className="assignmentList">
