@@ -175,7 +175,7 @@ export class DashboardService {
         key: 'overdue-plan-tasks',
         priority: 'high',
         title: `${overduePlanTasks} tareas del plan anual fuera de plazo`,
-        href: '/coordinacion',
+        href: '/coordinacion/planes',
       }] : []),
       ...(validatedWithoutEvidence ? [{
         key: 'missing-evidence',
