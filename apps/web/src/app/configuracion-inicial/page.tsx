@@ -36,7 +36,14 @@ export default function SetupPage() {
     router.refresh();
   }
 
-  if (initialized === null) return <main className="formShell"><p>Comprobando instalación…</p></main>;
+  if (initialized === null) return (
+    <main className="formShell">
+      <div className="loadingState" role="status" aria-live="polite">
+        <span className="loadingSpinner" aria-hidden="true" />
+        <strong>Comprobando el estado de la instalación…</strong>
+      </div>
+    </main>
+  );
 
   if (initialized) {
     return (
