@@ -22,6 +22,7 @@ export default function NewCommunicationPage() {
   const [morning, setMorning] = useState(false);
   const [afternoon, setAfternoon] = useState(false);
   const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
   const [resendConfigured, setSmtpConfigured] = useState<boolean | null>(null);
   const [aiBrief, setAiBrief] = useState('');
@@ -53,7 +54,7 @@ export default function NewCommunicationPage() {
         const mail = await mailResponse.json();
         setSmtpConfigured(Boolean(mail.configured));
       }
-    }).catch(() => setMessage('No se pudieron cargar los datos.'))
+    }).catch(() => setError('No se pudieron cargar los datos.'))
       .finally(() => setLoadingBase(false));
   }, [router]);
 
@@ -118,6 +119,7 @@ export default function NewCommunicationPage() {
         .trim()
         .slice(0, 12000);
     }
+    setError('');
     setMessage('Borrador de IA aplicado al formulario. Revísalo antes de publicar.');
   }
 
@@ -125,6 +127,7 @@ export default function NewCommunicationPage() {
     event.preventDefault();
     setSending(true);
     setMessage('');
+    setError('');
     const form = new FormData(event.currentTarget);
     const shifts = [
       ...(morning ? ['MORNING'] : []),
@@ -147,7 +150,7 @@ export default function NewCommunicationPage() {
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
       setSending(false);
-      setMessage(Array.isArray(body.message) ? body.message.join(' ') : body.message || 'No se pudo publicar.');
+      setError(Array.isArray(body.message) ? body.message.join(' ') : body.message || 'No se pudo publicar.');
       return;
     }
 
@@ -198,7 +201,8 @@ export default function NewCommunicationPage() {
         <a className="secondaryButton" href="/comunicaciones">Bandeja</a>
       </div>
 
-      {message && <div className="notice">{message}</div>}
+      {message && <div className="notice" role="status" aria-live="polite">{message}</div>}
+      {error && <div className="errorBox" role="alert">{error}</div>}
       {resendConfigured === false && (
         <div className="notice">
           Resend todavía no está configurado o activado. La comunicación se publicará en CÍCLOPE, pero no se enviará por correo hasta configurarlo en Administración → Integraciones.
