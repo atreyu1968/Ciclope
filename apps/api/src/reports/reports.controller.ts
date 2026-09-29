@@ -51,6 +51,7 @@ export class ReportsController {
       network: report.network,
       totals: report.totals,
       planProgress: report.planProgress,
+      networkInsights: report.networkInsights,
       byNetwork: report.byNetwork,
       byFamily: report.byFamily,
       byType: report.byType,
