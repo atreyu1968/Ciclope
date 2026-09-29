@@ -24,8 +24,10 @@ export default function StaffInboxPage() {
   const router = useRouter();
   const [items, setItems] = useState<RequestItem[]>([]);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setLoading(true);
     fetch('/api/staff-requests/mine').then(async (response) => {
       if (response.status === 401) {
         router.push('/login');
@@ -36,6 +38,10 @@ export default function StaffInboxPage() {
         return;
       }
       setItems(await response.json());
+    }).catch(() => {
+      setError('No se pudo cargar el buzón.');
+    }).finally(() => {
+      setLoading(false);
     });
   }, [router]);
 
@@ -54,6 +60,12 @@ export default function StaffInboxPage() {
       </div>
 
       {error && <div className="errorBox">{error}</div>}
+      {loading && !error && (
+        <div className="loadingState" role="status" aria-live="polite">
+          <span className="loadingSpinner" aria-hidden="true" />
+          <strong>Cargando tu buzón…</strong>
+        </div>
+      )}
 
       <div className="actionQueue">
         {items.map((item) => (
@@ -73,10 +85,11 @@ export default function StaffInboxPage() {
             <span className="requestOpen">Abrir →</span>
           </a>
         ))}
-        {!items.length && !error && (
-          <div className="panel">
+        {!loading && !items.length && !error && (
+          <div className="emptyState">
             <h2>Tu buzón está vacío</h2>
-            <p className="empty">Cuando envíes una consulta o propuesta podrás seguir aquí su respuesta.</p>
+            <p>Envía una consulta, propuesta o incidencia y podrás seguir toda la conversación desde este espacio.</p>
+            <div className="rowActions"><a className="primaryButton" href="/buzon/nueva">Crear la primera consulta</a></div>
           </div>
         )}
       </div>
