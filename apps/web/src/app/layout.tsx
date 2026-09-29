@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import Topbar from './topbar';
 
 export const metadata: Metadata = {
   title: 'CÍCLOPE FP',
@@ -10,10 +11,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="es">
       <body>
-        <header className="topbar">
-          <div><strong>CÍCLOPE FP</strong><span>Redes de Enseñanzas Profesionales</span></div>
-          <span className="course">Curso 2026-2027</span>
-        </header>
+        <Topbar />
         {children}
       </body>
     </html>
