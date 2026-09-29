@@ -1,0 +1,4 @@
+ALTER TABLE "User"
+ADD COLUMN "emailNotifications" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN "reminderEmails" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN "weeklySummaryEmail" BOOLEAN NOT NULL DEFAULT true;
