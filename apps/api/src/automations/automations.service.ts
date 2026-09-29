@@ -219,6 +219,7 @@ export class AutomationsService implements OnModuleInit, OnModuleDestroy {
           planUrl ? `Consulta la planificación en: ${planUrl}` : '',
         ].filter(Boolean).join('\n'),
         { id: task.owner.id, email: task.owner.email },
+        'reminder',
       );
       queued += result.queued;
     }
@@ -237,6 +238,7 @@ export class AutomationsService implements OnModuleInit, OnModuleDestroy {
           planUrl ? `Actualiza su estado en: ${planUrl}` : '',
         ].filter(Boolean).join('\n'),
         { id: task.owner.id, email: task.owner.email },
+        'reminder',
       );
       queued += result.queued;
     }
@@ -294,6 +296,7 @@ export class AutomationsService implements OnModuleInit, OnModuleDestroy {
             planUrl ? `Revisa la planificación en: ${planUrl}` : '',
           ].filter(Boolean).join('\n'),
           { id: recipient.id, email: recipient.email },
+          'reminder',
         );
         queued += result.queued;
       }
@@ -401,6 +404,7 @@ export class AutomationsService implements OnModuleInit, OnModuleDestroy {
             dashboardUrl ? `Abre “Mi hora de coordinación” para priorizar: ${dashboardUrl}` : '',
           ].filter(Boolean).join('\n'),
           { id: recipient.id, email: recipient.email },
+          'weekly',
         );
         queued += result.queued;
       }
@@ -464,6 +468,7 @@ export class AutomationsService implements OnModuleInit, OnModuleDestroy {
             inboxUrl ? `Puedes responder en: ${inboxUrl}` : '',
           ].filter(Boolean).join('\n'),
           { id: recipient.user.id, email: recipient.user.email },
+          'reminder',
         );
         queued += result.queued;
       }
@@ -485,6 +490,7 @@ export class AutomationsService implements OnModuleInit, OnModuleDestroy {
             inboxUrl ? `Puedes responder en: ${inboxUrl}` : '',
           ].filter(Boolean).join('\n'),
           { id: recipient.user.id, email: recipient.user.email },
+          'reminder',
         );
         queued += result.queued;
       }
