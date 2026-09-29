@@ -22,6 +22,7 @@ export default function StructureAdminPage() {
   const [families, setFamilies] = useState<Family[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState('');
 
@@ -37,13 +38,13 @@ export default function StructureAdminPage() {
         return;
       }
       if (!familiesResponse.ok || !groupsResponse.ok) {
-        setMessage('No se pudo cargar la estructura académica.');
+        setError('No se pudo cargar la estructura académica.');
         return;
       }
       setFamilies(await familiesResponse.json());
       setGroups(await groupsResponse.json());
     } catch {
-      setMessage('No se pudo cargar la estructura académica.');
+      setError('No se pudo cargar la estructura académica.');
     } finally {
       setLoading(false);
     }
@@ -54,6 +55,8 @@ export default function StructureAdminPage() {
   async function createFamily(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setWorking('family');
+    setMessage('');
+    setError('');
     const form = new FormData(event.currentTarget);
     const response = await fetch('/api/structure/families', {
       method: 'POST',
@@ -63,10 +66,12 @@ export default function StructureAdminPage() {
         code: form.get('code') || undefined,
       }),
     });
-    setMessage(response.ok ? 'Familia profesional creada.' : 'No se pudo crear la familia.');
     if (response.ok) {
+      setMessage('Familia profesional creada.');
       event.currentTarget.reset();
       await load();
+    } else {
+      setError('No se pudo crear la familia profesional.');
     }
     setWorking('');
   }
@@ -74,6 +79,8 @@ export default function StructureAdminPage() {
   async function createGroup(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setWorking('group');
+    setMessage('');
+    setError('');
     const form = new FormData(event.currentTarget);
     const response = await fetch('/api/structure/groups', {
       method: 'POST',
@@ -85,10 +92,12 @@ export default function StructureAdminPage() {
         studentCount: form.get('studentCount') ? Number(form.get('studentCount')) : undefined,
       }),
     });
-    setMessage(response.ok ? 'Grupo creado.' : 'No se pudo crear el grupo.');
     if (response.ok) {
+      setMessage('Grupo creado.');
       event.currentTarget.reset();
       await load();
+    } else {
+      setError('No se pudo crear el grupo.');
     }
     setWorking('');
   }
@@ -107,7 +116,8 @@ export default function StructureAdminPage() {
         </div>
       </div>
 
-      {message && <div className="notice">{message}</div>}
+      {message && <div className="notice" role="status" aria-live="polite">{message}</div>}
+      {error && <div className="errorBox" role="alert">{error}</div>}
       {loading && (
         <div className="loadingState" role="status" aria-live="polite">
           <span className="loadingSpinner" aria-hidden="true" />
