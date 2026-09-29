@@ -370,6 +370,7 @@ export default function AnnualPlansPage() {
           </p>
         </div>
         <div className="rowActions">
+          <a className="secondaryButton" href="/coordinacion/calendario">Calendario</a>
           <a className="secondaryButton" href="/informes">Ver indicadores</a>
           <a className="secondaryButton" href="/coordinacion">Volver</a>
         </div>
