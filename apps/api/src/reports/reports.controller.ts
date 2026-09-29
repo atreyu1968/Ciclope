@@ -9,6 +9,8 @@ import { ReportsService } from './reports.service';
 import { CreateReportSnapshotDto } from './dto/create-report-snapshot.dto';
 import { UpdateReportSnapshotStatusDto } from './dto/update-report-snapshot-status.dto';
 import { UpdateReportSnapshotNarrativeDto } from './dto/update-report-snapshot-narrative.dto';
+import { ExportReportDto } from './dto/export-report.dto';
+import { ReportDocumentService } from './report-document.service';
 import { IntegrationsService } from '../integrations/integrations.service';
 
 const REPORT_ROLES = [
@@ -29,6 +31,7 @@ export class ReportsController {
   constructor(
     private readonly reports: ReportsService,
     private readonly integrations: IntegrationsService,
+    private readonly documents: ReportDocumentService,
   ) {}
 
   @Get('summary')
@@ -114,6 +117,64 @@ export class ReportsController {
     @Body() dto: UpdateReportSnapshotStatusDto,
   ) {
     return this.reports.updateSnapshotStatus(user, id, dto.status);
+  }
+
+  @Post('export.docx')
+  async exportDocx(
+    @CurrentUser() user: AuthenticatedUser,
+    @Res() response: Response,
+    @Body() dto: ExportReportDto,
+    @Query('academicYearId') academicYearId?: string,
+    @Query('networkId') networkId?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    const report = await this.reports.summary(user, academicYearId, networkId, from, to);
+    const buffer = await this.documents.docx(report, dto.narrative);
+    response.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    );
+    response.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${this.exportFilename(report, 'docx')}"`,
+    );
+    response.send(buffer);
+  }
+
+  @Post('export.odt')
+  async exportOdt(
+    @CurrentUser() user: AuthenticatedUser,
+    @Res() response: Response,
+    @Body() dto: ExportReportDto,
+    @Query('academicYearId') academicYearId?: string,
+    @Query('networkId') networkId?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    const report = await this.reports.summary(user, academicYearId, networkId, from, to);
+    const buffer = await this.documents.odt(report, dto.narrative);
+    response.setHeader(
+      'Content-Type',
+      'application/vnd.oasis.opendocument.text',
+    );
+    response.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${this.exportFilename(report, 'odt')}"`,
+    );
+    response.send(buffer);
+  }
+
+  private exportFilename(report: any, extension: 'docx' | 'odt') {
+    const scope = report.network?.name || 'cuatro-redes';
+    const value = `ciclope-memoria-${report.academicYear?.name || 'curso'}-${scope}`
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9_-]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+      .toLowerCase();
+    return `${value || 'ciclope-memoria'}.${extension}`;
   }
 
   @Get('actions.csv')
