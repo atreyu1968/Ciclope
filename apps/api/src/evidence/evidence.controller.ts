@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -21,7 +22,7 @@ import type { AuthenticatedUser } from '../auth/auth.types';
 import { CreateLinkEvidenceDto } from './dto/create-link-evidence.dto';
 import { EvidenceService } from './evidence.service';
 
-const ALLOWED_MIME_TYPES = new Set([
+const DEFAULT_ALLOWED_MIME_TYPES = new Set([
   'image/jpeg',
   'image/png',
   'image/webp',
@@ -34,6 +35,20 @@ const ALLOWED_MIME_TYPES = new Set([
   'application/vnd.openxmlformats-officedocument.presentationml.presentation',
   'video/mp4',
 ]);
+
+function allowedMimeTypes() {
+  const configured = process.env.EVIDENCE_ALLOWED_MIME_TYPES
+    ?.split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+  return configured?.length ? new Set(configured) : DEFAULT_ALLOWED_MIME_TYPES;
+}
+
+function evidenceMaxBytes() {
+  const raw = Number(process.env.EVIDENCE_MAX_MB || '25');
+  const mb = Number.isFinite(raw) ? Math.min(Math.max(raw, 1), 200) : 25;
+  return mb * 1024 * 1024;
+}
 
 function uploadDirectory() {
   const dir = process.env.UPLOAD_DIR || '/tmp/ciclope-fp-uploads';
@@ -66,9 +81,9 @@ export class EvidenceController {
       destination: (_request, _file, callback) => callback(null, uploadDirectory()),
       filename: (_request, _file, callback) => callback(null, randomUUID()),
     }),
-    limits: { fileSize: 25 * 1024 * 1024 },
+    limits: { fileSize: evidenceMaxBytes() },
     fileFilter: (_request, file, callback) => {
-      if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
+      if (!allowedMimeTypes().has(file.mimetype)) {
         callback(new Error('Tipo de archivo no permitido.'), false);
         return;
       }
@@ -81,6 +96,29 @@ export class EvidenceController {
     @UploadedFile() file: Express.Multer.File,
   ) {
     return this.evidence.addFile(actionId, user, file);
+  }
+
+  @Delete(':id')
+  remove(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.evidence.remove(id, user);
+  }
+
+  @Get(':id/view')
+  async view(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Res() response: Response,
+  ) {
+    const evidence = await this.evidence.fileForDownload(id, user);
+    response.setHeader('Content-Type', evidence.mimeType || 'application/octet-stream');
+    response.setHeader(
+      'Content-Disposition',
+      `inline; filename*=UTF-8''${encodeURIComponent(evidence.title || basename(evidence.path!))}`,
+    );
+    createReadStream(evidence.path!).pipe(response);
   }
 
   @Get(':id/download')
