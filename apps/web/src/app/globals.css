@@ -41,3 +41,5 @@
 @media(max-width:640px){.officialMilestones>div{display:grid}.officialMilestones span{text-align:left}}
 
 .reportPeriodRow{margin-top:14px}.reportPeriodActions{margin-top:10px;justify-content:space-between}.reportPeriodActions .textButton{color:var(--institutional)}
+
+.milestoneMiniList{display:grid;gap:8px}.milestoneMiniList>div{display:grid;gap:3px;border:1px solid var(--line);border-radius:9px;padding:10px 11px;background:#f8fafc}.milestoneMiniList strong{font-size:.84rem}.milestoneMiniList span{color:var(--muted);font-size:.78rem}
