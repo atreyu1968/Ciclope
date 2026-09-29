@@ -162,7 +162,7 @@ export default function CorrectActionPage() {
 
   if (!action) return (
     <main className="formShell">
-      {message ? <div className="errorBox">{message}</div> : (
+      {message ? <div className="errorBox" role="alert">{message}</div> : (
         <div className="loadingState" role="status" aria-live="polite">
           <span className="loadingSpinner" aria-hidden="true" />
           <strong>Cargando actuación…</strong>
@@ -174,7 +174,7 @@ export default function CorrectActionPage() {
   if (action.status !== 'RETURNED') {
     return (
       <main className="formShell">
-        <div className="notice">Esta actuación ya no está pendiente de corrección.</div>
+        <div className="notice" role="status" aria-live="polite">Esta actuación ya no está pendiente de corrección.</div>
         <a className="secondaryButton" href="/actuaciones/mis-actuaciones">Volver</a>
       </main>
     );
@@ -192,12 +192,12 @@ export default function CorrectActionPage() {
       </div>
 
       {action.returnedReason && (
-        <div className="errorBox">
+        <div className="errorBox" role="alert">
           <strong>Corrección solicitada</strong>
           <p>{action.returnedReason}</p>
         </div>
       )}
-      {message && <div className="errorBox">{message}</div>}
+      {message && <div className="errorBox" role="alert">{message}</div>}
 
       <form className="actionForm" onSubmit={submit}>
         <fieldset>
