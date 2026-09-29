@@ -224,7 +224,7 @@
 - [x] Página 403 amigable.
 - [x] Página 404 propia.
 - [x] Estados vacíos coherentes.
-- [ ] Indicadores de carga en todas las acciones asíncronas.
+- [x] Indicadores de carga en todas las acciones asíncronas.
 - [x] Confirmaciones para operaciones destructivas.
 - [ ] Revisión responsive completa.
 - [ ] Revisión de accesibilidad por teclado, etiquetas y contraste.
