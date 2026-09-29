@@ -66,8 +66,9 @@ export default function ReportsPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [aiText, setAiText] = useState('');
+  const [aiMode, setAiMode] = useState<'interpretation'|'draft'>('interpretation');
   const [aiError, setAiError] = useState('');
-  const [aiLoading, setAiLoading] = useState(false);
+  const [aiLoading, setAiLoading] = useState<'interpretation'|'draft'|''>('');
 
   useEffect(() => {
     Promise.all([
@@ -124,19 +125,20 @@ export default function ReportsPage() {
     return `/api/reports/actions.csv?${params.toString()}`;
   }
 
-  async function interpretWithAi() {
+  async function processWithAi(mode: 'interpretation'|'draft') {
     if (!yearId) return;
-    setAiLoading(true);
+    setAiLoading(mode);
     setAiError('');
-    const params = new URLSearchParams({ academicYearId: yearId });
+    const params = new URLSearchParams({ academicYearId: yearId, mode });
     if (networkId) params.set('networkId', networkId);
     const response = await fetch(`/api/reports/interpret?${params.toString()}`, { method: 'POST' });
     const body = await response.json().catch(() => ({}));
-    setAiLoading(false);
+    setAiLoading('');
     if (!response.ok) {
-      setAiError(Array.isArray(body.message) ? body.message.join(' ') : body.message || 'No se pudo interpretar el informe con IA.');
+      setAiError(Array.isArray(body.message) ? body.message.join(' ') : body.message || 'No se pudo procesar el informe con IA.');
       return;
     }
+    setAiMode(mode);
     setAiText(body.text || '');
   }
 
@@ -149,8 +151,11 @@ export default function ReportsPage() {
           <p className="lead">Las cifras se recalculan a partir de actuaciones validadas, sin transcribir datos.</p>
         </div>
         <div className="rowActions">
-          <button className="secondaryButton" onClick={() => void interpretWithAi()} disabled={aiLoading || loading || !summary}>
-            {aiLoading ? 'Interpretando…' : 'Interpretar con IA'}
+          <button className="secondaryButton" onClick={() => void processWithAi('interpretation')} disabled={Boolean(aiLoading) || loading || !summary}>
+            {aiLoading === 'interpretation' ? 'Interpretando…' : 'Interpretar con IA'}
+          </button>
+          <button className="secondaryButton" onClick={() => void processWithAi('draft')} disabled={Boolean(aiLoading) || loading || !summary}>
+            {aiLoading === 'draft' ? 'Redactando…' : 'Redactar memoria con IA'}
           </button>
           <a className="secondaryButton" href={csvHref()}>Exportar CSV</a>
           <button className="primaryButton" onClick={() => window.print()}>Imprimir / guardar PDF</button>
@@ -203,7 +208,7 @@ export default function ReportsPage() {
 
           {aiText && (
             <section className="reportSection aiInterpretation">
-              <h2>Interpretación asistida por IA</h2>
+              <h2>{aiMode === 'draft' ? 'Borrador de memoria asistido por IA' : 'Interpretación asistida por IA'}</h2>
               <p className="preLine">{aiText}</p>
               <p className="reportNote">
                 Texto generado a partir de indicadores agregados. Debe ser revisado por la coordinación antes de incorporarlo a una memoria oficial.
