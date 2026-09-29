@@ -108,6 +108,7 @@ export class StaffRequestsService {
     const recipients = await this.coordinatorRecipients(user.academicYearId, networkIds, user.id);
     const link = this.requestLink(request.id);
     await this.mail.enqueueDirect(
+      user.centerId,
       `[CÍCLOPE FP · Buzón] ${request.subject}`,
       [
         `${user.firstName} ${user.lastName} ha enviado una nueva ${request.category.toLowerCase()}.`,
@@ -220,6 +221,7 @@ export class StaffRequestsService {
         user.id,
       );
       await this.mail.enqueueDirect(
+        request.academicYear.centerId,
         `[CÍCLOPE FP · Buzón] Actualización: ${request.subject}`,
         [
           `${user.firstName} ${user.lastName} ha añadido un mensaje.`,
@@ -231,6 +233,7 @@ export class StaffRequestsService {
       );
     } else {
       await this.mail.enqueueDirect(
+        request.academicYear.centerId,
         `[CÍCLOPE FP · Buzón] Respuesta: ${request.subject}`,
         [
           `${user.firstName} ${user.lastName} ha respondido a tu consulta.`,
@@ -267,6 +270,7 @@ export class StaffRequestsService {
     if (status === StaffRequestStatus.RESOLVED || status === StaffRequestStatus.CLOSED) {
       const link = this.requestLink(id);
       await this.mail.enqueueDirect(
+        request.academicYear.centerId,
         `[CÍCLOPE FP · Buzón] ${status === StaffRequestStatus.RESOLVED ? 'Consulta resuelta' : 'Consulta cerrada'}: ${request.subject}`,
         [
           `La coordinación ha actualizado el estado de tu consulta a “${status === StaffRequestStatus.RESOLVED ? 'Resuelta' : 'Cerrada'}”.`,
