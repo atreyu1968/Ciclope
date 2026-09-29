@@ -55,6 +55,8 @@ Las claves de Resend y de la API de IA se configuran en **Administración → In
 
 La integración de IA utiliza una API compatible con Chat Completions. En los informes solo se envían datos agregados: el listado nominal del profesorado no se remite al proveedor de IA.
 
+La configuración detallada, criterios de privacidad, minimización de datos y diagnóstico están documentados en `docs/INTEGRATIONS_RESEND_AI.md`.
+
 ## Instalación
 
 El script `scripts/install-ubuntu.sh` instala las dependencias, PostgreSQL, Node.js, Nginx, crea el usuario de servicio, genera secretos, ejecuta migraciones, compila la aplicación y activa los servicios systemd.
