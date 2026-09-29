@@ -26,6 +26,8 @@ export default function MyActionsPage() {
   const router = useRouter();
   const [actions, setActions] = useState<Action[]>([]);
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  const [workingId, setWorkingId] = useState('');
 
   useEffect(() => {
     fetch('/api/actions/mine').then(async (response) => {
@@ -41,6 +43,21 @@ export default function MyActionsPage() {
     });
   }, [router]);
 
+  async function duplicate(id: string) {
+    setWorkingId(id);
+    setMessage('');
+    setError('');
+    const response = await fetch(`/api/actions/${id}/duplicate`, { method: 'POST' });
+    const body = await response.json().catch(() => ({}));
+    setWorkingId('');
+    if (!response.ok) {
+      setError(Array.isArray(body?.message) ? body.message.join(' ') : body?.message || 'No se pudo duplicar la actuación.');
+      return;
+    }
+    setMessage('Copia creada como borrador. Puedes revisarla antes de enviarla.');
+    router.push(`/actuaciones/${body.id}/editar`);
+  }
+
   return (
     <main className="shell">
       <div className="pageHeader">
@@ -55,6 +72,7 @@ export default function MyActionsPage() {
         </div>
       </div>
 
+      {message && <div className="notice">{message}</div>}
       {error && <div className="errorBox">{error}</div>}
 
       <div className="actionQueue">
@@ -66,6 +84,7 @@ export default function MyActionsPage() {
                 <span>{LABELS[action.status] ?? action.status}</span>
               </div>
               <h2>{action.title}</h2>
+              <p className="hint">Referencia: {action.id.slice(-8).toUpperCase()}</p>
               <p>{action.description}</p>
               <div className="chipRow">
                 {action.networks.map(({ network }) => <span className="chip" key={network.id}>{network.name}</span>)}
@@ -80,9 +99,20 @@ export default function MyActionsPage() {
             </div>
             <div className="queueActions">
               <a className="secondaryButton" href={`/actuaciones/${action.id}/evidencias`}>Evidencias</a>
+              {['DRAFT', 'PENDING_VALIDATION'].includes(action.status) && (
+                <a className="secondaryButton" href={`/actuaciones/${action.id}/editar`}>Editar</a>
+              )}
               {action.status === 'RETURNED' && (
                 <a className="primaryButton" href={`/actuaciones/${action.id}/corregir`}>Corregir y reenviar</a>
               )}
+              <button
+                className="secondaryButton"
+                type="button"
+                disabled={workingId === action.id}
+                onClick={() => void duplicate(action.id)}
+              >
+                {workingId === action.id ? 'Duplicando…' : 'Duplicar'}
+              </button>
             </div>
           </article>
         ))}
