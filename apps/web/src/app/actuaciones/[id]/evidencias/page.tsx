@@ -27,22 +27,30 @@ export default function ActionEvidencePage() {
   const [message, setMessage] = useState('');
   const [uploading, setUploading] = useState(false);
   const [workingId, setWorkingId] = useState('');
+  const [loading, setLoading] = useState(true);
 
   async function load() {
-    const [actionResponse, evidenceResponse] = await Promise.all([
-      fetch(`/api/actions/${params.id}`),
-      fetch(`/api/evidence/action/${params.id}`),
-    ]);
-    if (actionResponse.status === 401 || evidenceResponse.status === 401) {
-      router.push('/login');
-      return;
-    }
-    if (!actionResponse.ok || !evidenceResponse.ok) {
+    setLoading(true);
+    try {
+      const [actionResponse, evidenceResponse] = await Promise.all([
+        fetch(`/api/actions/${params.id}`),
+        fetch(`/api/evidence/action/${params.id}`),
+      ]);
+      if (actionResponse.status === 401 || evidenceResponse.status === 401) {
+        router.push('/login');
+        return;
+      }
+      if (!actionResponse.ok || !evidenceResponse.ok) {
+        setMessage('No se pudieron cargar las evidencias.');
+        return;
+      }
+      setAction(await actionResponse.json());
+      setItems(await evidenceResponse.json());
+    } catch {
       setMessage('No se pudieron cargar las evidencias.');
-      return;
+    } finally {
+      setLoading(false);
     }
-    setAction(await actionResponse.json());
-    setItems(await evidenceResponse.json());
   }
 
   useEffect(() => { void load(); }, [params.id]);
@@ -118,6 +126,12 @@ export default function ActionEvidencePage() {
       </div>
 
       {message && <div className="notice">{message}</div>}
+      {loading && (
+        <div className="loadingState" role="status" aria-live="polite">
+          <span className="loadingSpinner" aria-hidden="true" />
+          <strong>Cargando evidencias…</strong>
+        </div>
+      )}
 
       <section className="adminGrid">
         <article className="panel">
@@ -183,7 +197,12 @@ export default function ActionEvidencePage() {
                 </div>
               </div>
             ))}
-            {!items.length && <p className="empty">Aún no hay evidencias asociadas.</p>}
+            {!loading && !items.length && (
+              <div className="emptyState">
+                <h3>Aún no hay evidencias asociadas</h3>
+                <p>Sube un archivo o añade un enlace para documentar la actuación y mejorar la cobertura de evidencias de la memoria.</p>
+              </div>
+            )}
           </div>
         </article>
       </section>
