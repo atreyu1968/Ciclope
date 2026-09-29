@@ -152,7 +152,14 @@ export default function NewActionPage() {
     setSelectedObjectives((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
   }
 
-  if (state === 'loading') return <main className="formShell"><p>Cargando…</p></main>;
+  if (state === 'loading') return (
+    <main className="formShell">
+      <div className="loadingState" role="status" aria-live="polite">
+        <span className="loadingSpinner" aria-hidden="true" />
+        <strong>Preparando el formulario de actuación…</strong>
+      </div>
+    </main>
+  );
 
   return (
     <main className="formShell">
