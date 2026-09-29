@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { ArrayMinSize, IsArray, IsDateString, IsInt, IsObject, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import { ArrayMinSize, IsArray, IsBoolean, IsDateString, IsInt, IsObject, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 
 export class CreateActionDto {
   @IsString() @MaxLength(180)
@@ -36,4 +36,8 @@ export class CreateActionDto {
   @IsOptional()
   @IsObject()
   networkDetails?: Record<string, unknown>;
+
+  @IsOptional()
+  @IsBoolean()
+  saveAsDraft?: boolean;
 }
