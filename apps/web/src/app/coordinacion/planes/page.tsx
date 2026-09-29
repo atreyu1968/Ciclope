@@ -92,6 +92,9 @@ export default function AnnualPlansPage() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [aiPlanDraft, setAiPlanDraft] = useState('');
+  const [aiPlanError, setAiPlanError] = useState('');
+  const [aiPlanBusy, setAiPlanBusy] = useState(false);
 
   async function refreshPlans(preferredId?: string) {
     const response = await fetch('/api/plans');
@@ -188,6 +191,25 @@ export default function AnnualPlansPage() {
     () => networks.filter((network) => !plans.some((plan) => plan.network.id === network.id)),
     [networks, plans],
   );
+
+  async function proposePlanWork() {
+    if (!detail) return;
+    setAiPlanBusy(true);
+    setAiPlanDraft('');
+    setAiPlanError('');
+    const response = await fetch('/api/assistant/plan-suggestions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ planId: detail.id }),
+    });
+    const body = await response.json().catch(() => ({}));
+    setAiPlanBusy(false);
+    if (!response.ok) {
+      setAiPlanError(messageFrom(body, 'No se pudieron generar propuestas para el plan.'));
+      return;
+    }
+    setAiPlanDraft(body.text || '');
+  }
 
   async function createPlan(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -461,6 +483,31 @@ export default function AnnualPlansPage() {
                     </select>
                   </label>
                 </div>
+              </article>
+
+              <article className="panel aiAssistBox">
+                <div className="panelHeader">
+                  <div>
+                    <p className="eyebrow">Asistente de IA</p>
+                    <h2>Proponer objetivos y tareas</h2>
+                  </div>
+                  <span className="badge warningChip">Requiere revisión humana</span>
+                </div>
+                <p className="hint">
+                  La propuesta se genera a partir del plan actual y evita, en lo posible, duplicar lo que ya existe. No se modifica ningún dato automáticamente.
+                </p>
+                <button className="secondaryButton" type="button" disabled={aiPlanBusy} onClick={() => void proposePlanWork()}>
+                  {aiPlanBusy ? 'Analizando el plan…' : 'Generar propuestas'}
+                </button>
+                {aiPlanError && <div className="errorBox">{aiPlanError}</div>}
+                {aiPlanDraft && (
+                  <div className="aiResult">
+                    <pre>{aiPlanDraft}</pre>
+                    <p className="aiReviewNotice">
+                      Propuesta generada con IA. Valora su adecuación al plan, a las instrucciones institucionales y a la realidad del centro antes de crear objetivos o tareas.
+                    </p>
+                  </div>
+                )}
               </article>
 
               <article className="panel">
