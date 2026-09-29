@@ -120,11 +120,17 @@ export default function HistoricalReportsPage() {
         </label>
       </section>
 
-      {loading && <div className="panel"><p>Cargando histórico…</p></div>}
-      {!loading && !snapshots.length && (
-        <div className="panel">
+      {loading && (
+        <div className="loadingState" role="status" aria-live="polite">
+          <span className="loadingSpinner" aria-hidden="true" />
+          <strong>Cargando histórico de informes…</strong>
+        </div>
+      )}
+      {!loading && !snapshots.length && !error && (
+        <div className="emptyState">
           <h2>Sin cortes guardados</h2>
-          <p className="empty">Genera un informe y pulsa “Guardar corte” cuando quieras congelar sus cifras.</p>
+          <p>Genera un informe y pulsa «Guardar corte» para conservar sus cifras y su narrativa exactamente como estaban en ese momento.</p>
+          <div className="rowActions"><a className="primaryButton" href="/informes">Generar un informe</a></div>
         </div>
       )}
 
