@@ -20,7 +20,7 @@
 - [x] Procedimiento automatizado de restauración.
 - [x] Rotación/limpieza de releases y backups antiguos.
 - [x] Comprobación postinstalación que valida servicios, web y API; pendiente ampliar la prueba profunda de BD/escritura en la fase de tests.
-- [ ] Documentar despliegue con dominio/HTTPS y Cloudflare Tunnel.
+- [x] Documentar despliegue con dominio/HTTPS y Cloudflare Tunnel.
 
 ## 2. Puesta en marcha, autenticación y seguridad
 
@@ -233,8 +233,8 @@
 ## 15. Calidad y pruebas
 
 - [x] CI de build en GitHub Actions.
-- [ ] Tests unitarios de servicios críticos.
-- [ ] Tests de autorización por rol.
+- [x] Tests unitarios de servicios críticos.
+- [x] Tests de autorización por rol.
 - [ ] Tests de integración API + PostgreSQL.
 - [ ] Tests E2E: configuración inicial → login → actuación → validación → informe.
 - [ ] Tests E2E de comunicaciones/Resend con transporte simulado.
