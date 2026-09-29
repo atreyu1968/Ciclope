@@ -227,7 +227,7 @@
 - [x] Indicadores de carga en todas las acciones asíncronas.
 - [x] Confirmaciones para operaciones destructivas.
 - [x] Revisión responsive completa.
-- [ ] Revisión de accesibilidad por teclado, etiquetas y contraste.
+- [x] Revisión de accesibilidad por teclado, etiquetas y contraste.
 - [ ] Unificar mensajes de error y éxito.
 
 ## 15. Calidad y pruebas
