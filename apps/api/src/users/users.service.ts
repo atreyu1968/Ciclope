@@ -1,9 +1,35 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
 import { AuthService } from '../auth/auth.service';
+import type { AuthenticatedUser } from '../auth/auth.types';
 import { PrismaService } from '../database/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { ImportUsersDto } from './dto/import-users.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { ResetUserPasswordDto } from './dto/reset-user-password.dto';
+
+const userSelect = {
+  id: true,
+  firstName: true,
+  lastName: true,
+  email: true,
+  shift: true,
+  active: true,
+  mustChangePassword: true,
+  professionalFamilies: {
+    include: { professionalFamily: true },
+  },
+  roles: {
+    include: { role: true },
+  },
+  networkCoordinations: {
+    where: { academicYear: { isActive: true } },
+    include: { network: true },
+  },
+  ciclopeCoordinations: {
+    where: { academicYear: { isActive: true } },
+  },
+} as const;
 
 @Injectable()
 export class UsersService {
@@ -14,59 +40,158 @@ export class UsersService {
 
   list(centerId: string) {
     return this.prisma.user.findMany({
-      where: { centerId, active: true },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        shift: true,
-        professionalFamilies: {
-          include: { professionalFamily: true },
-        },
-        networkCoordinations: {
-          where: { academicYear: { isActive: true } },
-          include: { network: true },
-        },
-        ciclopeCoordinations: {
-          where: { academicYear: { isActive: true } },
-        },
-      },
-      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+      where: { centerId },
+      select: userSelect,
+      orderBy: [{ active: 'desc' }, { lastName: 'asc' }, { firstName: 'asc' }],
     });
   }
 
-  async create(centerId: string, dto: CreateUserDto) {
+  async create(actor: AuthenticatedUser, dto: CreateUserDto) {
     const email = dto.email.toLowerCase().trim();
-    const exists = await this.prisma.user.findFirst({ where: { centerId, email } });
+    const exists = await this.prisma.user.findFirst({ where: { centerId: actor.centerId, email } });
     if (exists) throw new BadRequestException('Ya existe una cuenta con ese correo en el centro.');
 
     const temporaryPassword = dto.temporaryPassword ?? `Ciclope-${randomBytes(6).toString('hex')}A1!`;
     const passwordHash = await this.auth.hashPassword(temporaryPassword);
     const professorRole = await this.prisma.role.findUniqueOrThrow({ where: { key: 'PROFESOR_FP' } });
 
-    const user = await this.prisma.user.create({
-      data: {
-        centerId,
-        email,
-        firstName: dto.firstName.trim(),
-        lastName: dto.lastName.trim(),
-        passwordHash,
-        roles: { create: [{ roleId: professorRole.id }] },
-      },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        shift: true,
-      },
+    const user = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          centerId: actor.centerId,
+          email,
+          firstName: dto.firstName.trim(),
+          lastName: dto.lastName.trim(),
+          passwordHash,
+          mustChangePassword: true,
+          roles: { create: [{ roleId: professorRole.id }] },
+        },
+        select: userSelect,
+      });
+
+      await tx.auditLog.create({
+        data: {
+          centerId: actor.centerId,
+          actorId: actor.id,
+          action: 'USER_CREATED',
+          entityType: 'User',
+          entityId: created.id,
+          details: { email },
+        },
+      });
+      return created;
     });
 
     return { user, temporaryPassword };
   }
 
-  async importMany(centerId: string, dto: ImportUsersDto) {
+  async update(actor: AuthenticatedUser, id: string, dto: UpdateUserDto) {
+    const current = await this.prisma.user.findFirst({
+      where: { id, centerId: actor.centerId },
+      select: { id: true, email: true, active: true },
+    });
+    if (!current) throw new NotFoundException('Docente no encontrado.');
+
+    if (id === actor.id && dto.active === false) {
+      throw new BadRequestException('No puedes desactivar tu propia cuenta.');
+    }
+
+    const email = dto.email?.toLowerCase().trim();
+    if (email && email !== current.email) {
+      const duplicate = await this.prisma.user.findFirst({
+        where: { centerId: actor.centerId, email, NOT: { id } },
+        select: { id: true },
+      });
+      if (duplicate) throw new BadRequestException('Ya existe una cuenta con ese correo.');
+    }
+
+    if (dto.familyIds) {
+      const count = await this.prisma.professionalFamily.count({
+        where: { centerId: actor.centerId, id: { in: dto.familyIds }, active: true },
+      });
+      if (count !== new Set(dto.familyIds).size) {
+        throw new BadRequestException('Alguna familia profesional seleccionada no es válida.');
+      }
+    }
+
+    const data: Record<string, unknown> = {};
+    if (dto.firstName !== undefined) data.firstName = dto.firstName.trim();
+    if (dto.lastName !== undefined) data.lastName = dto.lastName.trim();
+    if (email !== undefined) data.email = email;
+    if (dto.shift !== undefined) data.shift = dto.shift;
+    if (dto.active !== undefined) data.active = dto.active;
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.user.update({ where: { id }, data });
+
+      if (dto.familyIds) {
+        const uniqueFamilyIds = [...new Set(dto.familyIds)];
+        await tx.userProfessionalFamily.deleteMany({ where: { userId: id } });
+        if (uniqueFamilyIds.length) {
+          await tx.userProfessionalFamily.createMany({
+            data: uniqueFamilyIds.map((professionalFamilyId) => ({
+              userId: id,
+              professionalFamilyId,
+            })),
+          });
+        }
+      }
+
+      if (dto.active === false) {
+        await tx.session.deleteMany({ where: { userId: id } });
+      }
+
+      await tx.auditLog.create({
+        data: {
+          centerId: actor.centerId,
+          actorId: actor.id,
+          action: dto.active === false
+            ? 'USER_DEACTIVATED'
+            : dto.active === true && !current.active
+              ? 'USER_REACTIVATED'
+              : 'USER_UPDATED',
+          entityType: 'User',
+          entityId: id,
+          details: { fields: Object.keys(dto) },
+        },
+      });
+
+      return tx.user.findUniqueOrThrow({ where: { id }, select: userSelect });
+    });
+  }
+
+  async resetPassword(actor: AuthenticatedUser, id: string, dto: ResetUserPasswordDto) {
+    const target = await this.prisma.user.findFirst({
+      where: { id, centerId: actor.centerId },
+      select: { id: true, email: true },
+    });
+    if (!target) throw new NotFoundException('Docente no encontrado.');
+
+    const temporaryPassword = dto.temporaryPassword ?? `Ciclope-${randomBytes(6).toString('hex')}A1!`;
+    const passwordHash = await this.auth.hashPassword(temporaryPassword);
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id },
+        data: { passwordHash, mustChangePassword: true },
+      }),
+      this.prisma.session.deleteMany({ where: { userId: id } }),
+      this.prisma.auditLog.create({
+        data: {
+          centerId: actor.centerId,
+          actorId: actor.id,
+          action: 'USER_PASSWORD_RESET_BY_ADMIN',
+          entityType: 'User',
+          entityId: id,
+          details: { email: target.email },
+        },
+      }),
+    ]);
+
+    return { success: true, temporaryPassword };
+  }
+
+  async importMany(actor: AuthenticatedUser, dto: ImportUsersDto) {
     const professorRole = await this.prisma.role.findUniqueOrThrow({ where: { key: 'PROFESOR_FP' } });
     const result = {
       created: 0,
@@ -81,7 +206,7 @@ export class UsersService {
       const email = row.email.toLowerCase().trim();
 
       try {
-        const existing = await this.prisma.user.findFirst({ where: { centerId, email } });
+        const existing = await this.prisma.user.findFirst({ where: { centerId: actor.centerId, email } });
         let userId: string;
 
         if (existing) {
@@ -101,12 +226,13 @@ export class UsersService {
           const passwordHash = await this.auth.hashPassword(temporaryPassword);
           const created = await this.prisma.user.create({
             data: {
-              centerId,
+              centerId: actor.centerId,
               email,
               firstName: row.firstName.trim(),
               lastName: row.lastName.trim(),
               shift: row.shift,
               passwordHash,
+              mustChangePassword: true,
             },
           });
           userId = created.id;
@@ -125,12 +251,12 @@ export class UsersService {
           if (!familyName) continue;
 
           let family = await this.prisma.professionalFamily.findUnique({
-            where: { centerId_name: { centerId, name: familyName } },
+            where: { centerId_name: { centerId: actor.centerId, name: familyName } },
           });
 
           if (!family) {
             family = await this.prisma.professionalFamily.create({
-              data: { centerId, name: familyName },
+              data: { centerId: actor.centerId, name: familyName },
             });
             result.familiesCreated += 1;
           }
@@ -157,6 +283,20 @@ export class UsersService {
         });
       }
     }
+
+    await this.prisma.auditLog.create({
+      data: {
+        centerId: actor.centerId,
+        actorId: actor.id,
+        action: 'USERS_IMPORTED',
+        entityType: 'User',
+        details: {
+          created: result.created,
+          updated: result.updated,
+          errors: result.errors.length,
+        },
+      },
+    });
 
     return result;
   }
