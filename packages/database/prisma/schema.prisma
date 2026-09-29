@@ -272,6 +272,7 @@ model Action {
   activityDate     DateTime
   durationMinutes  Int?
   studentCount     Int?
+  networkDetails   Json?
   submittedById    String?
   submittedByName  String
   submittedByEmail String
