@@ -36,7 +36,7 @@
 - [x] Cierre de sesión explícito desde la interfaz.
 - [x] Gestión administrativa de activación/desactivación de usuarios.
 - [x] Registro de auditoría de operaciones sensibles.
-- [ ] Rate limiting básico en login y endpoints públicos.
+- [x] Rate limiting básico en login y recuperación pública de contraseña.
 - [x] Revisión de cabeceras HTTP de seguridad y política de cookies.
 - [ ] Validación final de permisos de todos los roles.
 
@@ -93,11 +93,11 @@
 - [x] Estado pendiente de validación.
 - [x] Mis actuaciones.
 - [x] Corrección y reenvío de actuaciones devueltas.
-- [ ] Guardado como borrador por el docente.
-- [ ] Edición antes de validación.
-- [ ] Duplicar una actuación recurrente.
+- [x] Guardado como borrador por el docente.
+- [x] Edición antes de validación.
+- [x] Duplicar una actuación recurrente.
 - [ ] Formulario optimizado para móvil.
-- [ ] Confirmación clara y número/referencia tras registrar.
+- [x] Confirmación clara y número/referencia tras registrar.
 
 ## 7. Validación por coordinación
 
@@ -106,7 +106,7 @@
 - [x] Devolución para corrección con motivo.
 - [x] Reenvío posterior por el profesor.
 - [x] Notificación por correo al validar/devolver.
-- [ ] Validación múltiple desde la bandeja.
+- [x] Validación múltiple desde la bandeja.
 - [ ] Filtros avanzados por red, fecha, familia, docente y estado.
 - [ ] Historial visible de cambios de estado.
 - [ ] Avisos de actuaciones pendientes demasiado tiempo.
@@ -117,11 +117,11 @@
 - [x] Evidencias mediante archivo.
 - [x] Asociación a actuación.
 - [x] Metadatos de fichero.
-- [ ] Descarga segura de evidencias desde interfaz.
-- [ ] Eliminación controlada antes de cerrar/validar.
-- [ ] Límites configurables de tamaño y tipos de archivo.
-- [ ] Previsualización cuando el formato lo permita.
-- [ ] Comprobación de ficheros huérfanos.
+- [x] Descarga segura de evidencias desde interfaz.
+- [x] Eliminación controlada antes de cerrar/validar.
+- [x] Límites configurables de tamaño y tipos de archivo.
+- [x] Previsualización cuando el formato lo permita.
+- [x] Comprobación de ficheros huérfanos.
 
 ## 9. Comunicación con todo el claustro FP
 
@@ -139,8 +139,8 @@
 - [x] Cola de correo con reintentos.
 - [x] Deduplicación de envíos.
 - [ ] Plantillas institucionales HTML para correo.
-- [ ] Vista de entregas/fallos de correo para coordinación.
-- [ ] Reenvío manual de mensajes fallidos.
+- [x] Vista de entregas/fallos de correo para coordinación.
+- [x] Reenvío manual de mensajes fallidos.
 - [ ] Adjuntos en comunicaciones cuando sean necesarios.
 - [ ] Preferencias básicas de notificación por usuario.
 
@@ -208,9 +208,9 @@
 - [x] Recordatorios de comunicaciones pendientes.
 - [x] Notificaciones del flujo de actuaciones.
 - [ ] Resumen semanal de coordinación.
-- [ ] Aviso de tareas vencidas.
+- [x] Aviso de tareas vencidas.
 - [ ] Aviso de hitos próximos.
-- [ ] Aviso de comunicaciones sin respuesta tras el plazo.
+- [x] Aviso de comunicaciones sin respuesta tras el plazo.
 - [ ] Panel de estado de automatizaciones y últimos envíos.
 
 ## 14. Administración y experiencia de usuario
