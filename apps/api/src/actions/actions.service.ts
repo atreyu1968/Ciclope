@@ -1,7 +1,8 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { ActionStatus, AnnualPlanStatus, PlanObjectiveStatus } from '../generated/prisma/client';
+import { ActionStatus, AnnualPlanStatus, NetworkCode, PlanObjectiveStatus } from '../generated/prisma/client';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { PrismaService } from '../database/prisma.service';
+import { ACTION_NETWORK_FIELDS, publicActionNetworkFields } from './action-form.config';
 import { CreateActionDto } from './dto/create-action.dto';
 
 @Injectable()
@@ -11,6 +12,54 @@ export class ActionsService {
   private canManageAll(user: AuthenticatedUser) {
     return ['SUPERADMIN', 'ADMIN_CENTRO', 'DIRECCION', 'COORDINADOR_CICLOPE']
       .some((role) => user.roles.includes(role));
+  }
+
+  formConfig() {
+    return publicActionNetworkFields();
+  }
+
+  private normalizeNetworkDetails(
+    networkCodes: NetworkCode[],
+    raw?: Record<string, unknown>,
+  ) {
+    if (!raw) return undefined;
+
+    const normalized: Record<string, Record<string, string | boolean>> = {};
+
+    for (const code of networkCodes) {
+      const source = raw[code];
+      if (!source || typeof source !== 'object' || Array.isArray(source)) continue;
+
+      const values = source as Record<string, unknown>;
+      const result: Record<string, string | boolean> = {};
+
+      for (const field of ACTION_NETWORK_FIELDS[code]) {
+        const value = values[field.key];
+
+        if (field.type === 'boolean') {
+          if (typeof value === 'boolean') result[field.key] = value;
+          continue;
+        }
+
+        if (typeof value !== 'string') continue;
+        const trimmed = value.trim();
+        if (!trimmed) continue;
+
+        if (
+          field.type === 'select' &&
+          field.options &&
+          !field.options.some((option) => option.value === trimmed)
+        ) {
+          throw new BadRequestException(`Valor no válido en “${field.label}”.`);
+        }
+
+        result[field.key] = trimmed.slice(0, 180);
+      }
+
+      if (Object.keys(result).length) normalized[code] = result;
+    }
+
+    return Object.keys(normalized).length ? normalized : undefined;
   }
 
   private async assertCanManageAction(actionId: string, user: AuthenticatedUser) {
@@ -39,12 +88,17 @@ export class ActionsService {
     }
 
     const uniqueNetworkIds = [...new Set(dto.networkIds)];
-    const networkCount = await this.prisma.network.count({
+    const selectedNetworks = await this.prisma.network.findMany({
       where: { id: { in: uniqueNetworkIds }, active: true },
+      select: { id: true, code: true },
     });
-    if (networkCount !== uniqueNetworkIds.length) {
+    if (selectedNetworks.length !== uniqueNetworkIds.length) {
       throw new BadRequestException('Una o más redes seleccionadas no son válidas.');
     }
+    const networkDetails = this.normalizeNetworkDetails(
+      selectedNetworks.map((network) => network.code),
+      dto.networkDetails,
+    );
 
     const uniqueGroupIds = [...new Set(dto.teachingGroupIds ?? [])];
     const groups = uniqueGroupIds.length
@@ -92,6 +146,7 @@ export class ActionsService {
         activityDate: new Date(dto.activityDate),
         durationMinutes: dto.durationMinutes,
         studentCount: dto.studentCount ?? (groups.length ? inferredStudentCount : undefined),
+        networkDetails,
         submittedById: user.id,
         submittedByName: `${user.firstName} ${user.lastName}`.trim(),
         submittedByEmail: user.email,
@@ -193,12 +248,17 @@ export class ActionsService {
     }
 
     const uniqueNetworkIds = [...new Set(dto.networkIds)];
-    const networkCount = await this.prisma.network.count({
+    const selectedNetworks = await this.prisma.network.findMany({
       where: { id: { in: uniqueNetworkIds }, active: true },
+      select: { id: true, code: true },
     });
-    if (networkCount !== uniqueNetworkIds.length) {
+    if (selectedNetworks.length !== uniqueNetworkIds.length) {
       throw new BadRequestException('Una o más redes seleccionadas no son válidas.');
     }
+    const networkDetails = this.normalizeNetworkDetails(
+      selectedNetworks.map((network) => network.code),
+      dto.networkDetails,
+    );
 
     const uniqueGroupIds = [...new Set(dto.teachingGroupIds ?? [])];
     const groups = uniqueGroupIds.length
@@ -245,6 +305,7 @@ export class ActionsService {
         activityDate: new Date(dto.activityDate),
         durationMinutes: dto.durationMinutes,
         studentCount: dto.studentCount ?? (groups.length ? inferredStudentCount : undefined),
+        networkDetails,
         status: ActionStatus.PENDING_VALIDATION,
         returnedAt: null,
         returnedReason: null,
