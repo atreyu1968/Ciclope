@@ -18,7 +18,30 @@ type Summary = {
     totalMinutes: number;
     totalHours: number;
     evidence: number;
+    evidenceFiles: number;
+    evidenceLinks: number;
+    actionsWithEvidence: number;
+    actionsWithoutEvidence: number;
+    evidenceCoveragePercent: number;
   };
+  planProgress: Array<{
+    id: string;
+    title: string;
+    status: string;
+    network: { id: string; name: string };
+    measurableObjectives: number;
+    averageProgressPercent: number | null;
+    objectives: Array<{
+      id: string;
+      title: string;
+      status: string;
+      metric?: string | null;
+      targetValue?: number | null;
+      currentValue?: number | null;
+      progressPercent?: number | null;
+      linkedValidatedActions: number;
+    }>;
+  }>;
   byNetwork: Array<{ id: string; name: string; actions: number; participants: number; evidence: number }>;
   byFamily: Array<{ id: string; name: string; actions: number; participants: number }>;
   byType: Array<{ type: string; actions: number; participants: number }>;
@@ -161,7 +184,60 @@ export default function ReportsPage() {
             <div><strong>{summary.totals.studentParticipations}</strong><span>participaciones alumnado</span></div>
             <div><strong>{summary.totals.totalHours}</strong><span>horas registradas</span></div>
             <div><strong>{summary.totals.evidence}</strong><span>evidencias</span></div>
+            <div><strong>{summary.totals.evidenceCoveragePercent}%</strong><span>cobertura documental</span></div>
           </section>
+
+          <section className="reportSection">
+            <h2>Calidad de las evidencias</h2>
+            <div className="pendingSummary">
+              <span>{summary.totals.actionsWithEvidence} actuaciones con evidencia</span>
+              <span>{summary.totals.actionsWithoutEvidence} actuaciones sin evidencia</span>
+              <span>{summary.totals.evidenceFiles} archivos</span>
+              <span>{summary.totals.evidenceLinks} enlaces</span>
+            </div>
+            <p className="reportNote">
+              La cobertura documental indica qué porcentaje de las actuaciones validadas dispone de al menos una evidencia asociada.
+            </p>
+          </section>
+
+          {summary.planProgress.length > 0 && (
+            <section className="reportSection">
+              <h2>Seguimiento de los planes anuales</h2>
+              {summary.planProgress.map((plan) => (
+                <div className="planReportBlock" key={plan.id}>
+                  <div className="panelHeader">
+                    <div>
+                      <p className="eyebrow">{plan.network.name}</p>
+                      <h3>{plan.title}</h3>
+                    </div>
+                    <span className="badge">
+                      {plan.averageProgressPercent === null ? 'Sin métricas' : plan.averageProgressPercent + '% medio'}
+                    </span>
+                  </div>
+                  {plan.objectives.length ? (
+                    <div className="tableWrap">
+                      <table>
+                        <thead>
+                          <tr><th>Objetivo</th><th>Estado</th><th>Resultado</th><th>Meta</th><th>Avance</th></tr>
+                        </thead>
+                        <tbody>
+                          {plan.objectives.map((objective) => (
+                            <tr key={objective.id}>
+                              <td>{objective.title}</td>
+                              <td>{objective.status}</td>
+                              <td>{objective.currentValue ?? '—'}</td>
+                              <td>{objective.targetValue ?? '—'}</td>
+                              <td>{objective.progressPercent === null ? '—' : objective.progressPercent + '%'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : <p className="empty">El plan todavía no tiene objetivos.</p>}
+                </div>
+              ))}
+            </section>
+          )}
 
           {(summary.totals.pendingActions > 0 || summary.totals.returnedActions > 0) && (
             <section className="reportSection noPrint">
