@@ -69,8 +69,8 @@ export class ReportsController {
       generatedAt: report.generatedAt,
     };
     return mode === 'draft'
-      ? this.integrations.draftReport(user.centerId, safeReport)
-      : this.integrations.interpretReport(user.centerId, safeReport);
+      ? this.integrations.draftReport(user.centerId, safeReport, user.id)
+      : this.integrations.interpretReport(user.centerId, safeReport, user.id);
   }
 
   @Post('snapshots')
