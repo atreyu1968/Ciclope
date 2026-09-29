@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AcademicYearsModule } from './academic-years/academic-years.module';
 import { ActionsModule } from './actions/actions.module';
+import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { AutomationsModule } from './automations/automations.module';
 import { CommunicationsModule } from './communications/communications.module';
@@ -24,6 +25,7 @@ import { UsersModule } from './users/users.module';
     DatabaseModule,
     SetupModule,
     AuthModule,
+    AuditModule,
     IntegrationsModule,
     AutomationsModule,
     UsersModule,
