@@ -43,3 +43,7 @@
 .reportPeriodRow{margin-top:14px}.reportPeriodActions{margin-top:10px;justify-content:space-between}.reportPeriodActions .textButton{color:var(--institutional)}
 
 .milestoneMiniList{display:grid;gap:8px}.milestoneMiniList>div{display:grid;gap:3px;border:1px solid var(--line);border-radius:9px;padding:10px 11px;background:#f8fafc}.milestoneMiniList strong{font-size:.84rem}.milestoneMiniList span{color:var(--muted);font-size:.78rem}
+
+
+.snapshotList{display:grid;gap:14px}.snapshotCard{display:grid;grid-template-columns:1fr auto;gap:24px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px}.snapshotMain h2{margin:9px 0 7px;font-size:1.12rem}.snapshotActions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;justify-content:flex-end}.snapshotTitleRow{display:flex;align-items:center;justify-content:space-between;gap:20px}.snapshotTitleRow h1{margin-right:auto}
+@media(max-width:760px){.snapshotCard{grid-template-columns:1fr}.snapshotActions{justify-content:flex-start}.snapshotTitleRow{display:grid;gap:8px}}
