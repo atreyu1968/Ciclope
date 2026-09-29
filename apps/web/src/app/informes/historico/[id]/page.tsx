@@ -83,6 +83,8 @@ export default function HistoricalReportDetailPage() {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [narrativeDraft, setNarrativeDraft] = useState('');
+  const [savingNarrative, setSavingNarrative] = useState(false);
 
   useEffect(() => {
     fetch('/api/reports/snapshots/' + params.id).then(async (response) => {
@@ -96,6 +98,7 @@ export default function HistoricalReportDetailPage() {
         return;
       }
       setSnapshot(body);
+      setNarrativeDraft(body.narrative || '');
     });
   }, [params.id, router]);
 
@@ -103,6 +106,27 @@ export default function HistoricalReportDetailPage() {
     () => Math.max(1, ...(snapshot?.data.byMonth?.map((item) => item.actions) ?? [1])),
     [snapshot],
   );
+
+  async function saveNarrative() {
+    if (!snapshot) return;
+    setSavingNarrative(true);
+    setMessage('');
+    setError('');
+    const response = await fetch('/api/reports/snapshots/' + snapshot.id + '/narrative', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ narrative: narrativeDraft }),
+    });
+    const body = await response.json().catch(() => ({}));
+    setSavingNarrative(false);
+    if (!response.ok) {
+      setError(Array.isArray(body.message) ? body.message.join(' ') : body.message || 'No se pudo guardar la narrativa.');
+      return;
+    }
+    setSnapshot((current) => current ? { ...current, ...body } : current);
+    setNarrativeDraft(body.narrative || '');
+    setMessage('Narrativa del corte actualizada.');
+  }
 
   async function changeStatus(status: 'SAVED' | 'SUBMITTED') {
     if (!snapshot) return;
@@ -185,10 +209,36 @@ export default function HistoricalReportDetailPage() {
           <div><strong>{report.totals.evidenceCoveragePercent}%</strong><span>cobertura documental</span></div>
         </section>
 
-        {snapshot.narrative && (
+        {(snapshot.narrative || snapshot.status === 'SAVED') && (
           <section className="reportSection aiInterpretation">
-            <h2>Texto conservado con el corte</h2>
-            <p className="preLine">{snapshot.narrative}</p>
+            <h2>Narrativa conservada con el corte</h2>
+            {snapshot.status === 'SAVED' ? (
+              <div className="noPrint">
+                <label>
+                  Texto editable
+                  <textarea
+                    rows={18}
+                    maxLength={60000}
+                    value={narrativeDraft}
+                    onChange={(event) => setNarrativeDraft(event.target.value)}
+                    placeholder="Puedes pegar aquí una memoria revisada o editar el texto generado con IA."
+                  />
+                </label>
+                <div className="rowActions">
+                  <button
+                    className="secondaryButton"
+                    type="button"
+                    disabled={savingNarrative}
+                    onClick={() => void saveNarrative()}
+                  >
+                    {savingNarrative ? 'Guardando…' : 'Guardar narrativa'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="preLine">{snapshot.narrative}</p>
+            )}
+            {snapshot.status === 'SAVED' && narrativeDraft && <p className="preLine printOnly">{narrativeDraft}</p>}
           </section>
         )}
 
