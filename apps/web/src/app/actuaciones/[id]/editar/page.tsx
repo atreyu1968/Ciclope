@@ -162,7 +162,16 @@ export default function EditActionPage() {
     });
   }
 
-  if (!action) return <main className="formShell"><p>{message || 'Cargando actuación…'}</p></main>;
+  if (!action) return (
+    <main className="formShell">
+      {message ? <div className="errorBox">{message}</div> : (
+        <div className="loadingState" role="status" aria-live="polite">
+          <span className="loadingSpinner" aria-hidden="true" />
+          <strong>Cargando actuación…</strong>
+        </div>
+      )}
+    </main>
+  );
 
   if (!['DRAFT', 'PENDING_VALIDATION'].includes(action.status)) {
     return (
