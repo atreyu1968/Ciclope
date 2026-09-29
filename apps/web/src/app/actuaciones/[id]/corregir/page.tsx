@@ -160,7 +160,16 @@ export default function CorrectActionPage() {
     });
   }
 
-  if (!action) return <main className="formShell"><p>{message || 'Cargando actuación…'}</p></main>;
+  if (!action) return (
+    <main className="formShell">
+      {message ? <div className="errorBox">{message}</div> : (
+        <div className="loadingState" role="status" aria-live="polite">
+          <span className="loadingSpinner" aria-hidden="true" />
+          <strong>Cargando actuación…</strong>
+        </div>
+      )}
+    </main>
+  );
 
   if (action.status !== 'RETURNED') {
     return (
