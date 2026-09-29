@@ -17,6 +17,9 @@ import { basename } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { diskStorage } from 'multer';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { CONTENT_WRITE_ROLES } from '../auth/role-policy';
+import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
 import { SessionGuard } from '../auth/session.guard';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { CreateLinkEvidenceDto } from './dto/create-link-evidence.dto';
@@ -57,7 +60,7 @@ function uploadDirectory() {
 }
 
 @Controller('evidence')
-@UseGuards(SessionGuard)
+@UseGuards(SessionGuard, RolesGuard)
 export class EvidenceController {
   constructor(private readonly evidence: EvidenceService) {}
 
@@ -67,6 +70,7 @@ export class EvidenceController {
   }
 
   @Post('action/:actionId/link')
+  @Roles(...CONTENT_WRITE_ROLES)
   addLink(
     @Param('actionId') actionId: string,
     @CurrentUser() user: AuthenticatedUser,
@@ -76,6 +80,7 @@ export class EvidenceController {
   }
 
   @Post('action/:actionId/file')
+  @Roles(...CONTENT_WRITE_ROLES)
   @UseInterceptors(FileInterceptor('file', {
     storage: diskStorage({
       destination: (_request, _file, callback) => callback(null, uploadDirectory()),
@@ -99,6 +104,7 @@ export class EvidenceController {
   }
 
   @Delete(':id')
+  @Roles(...CONTENT_WRITE_ROLES)
   remove(
     @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
