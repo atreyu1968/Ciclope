@@ -223,9 +223,9 @@
 - [x] Perfil del usuario.
 - [x] Página 403 amigable.
 - [x] Página 404 propia.
-- [ ] Estados vacíos coherentes.
+- [x] Estados vacíos coherentes.
 - [ ] Indicadores de carga en todas las acciones asíncronas.
-- [ ] Confirmaciones para operaciones destructivas.
+- [x] Confirmaciones para operaciones destructivas.
 - [ ] Revisión responsive completa.
 - [ ] Revisión de accesibilidad por teclado, etiquetas y contraste.
 - [ ] Unificar mensajes de error y éxito.
