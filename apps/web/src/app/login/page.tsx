@@ -1,17 +1,26 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
   const router = useRouter();
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('passwordReset') === '1') {
+      setNotice('Contraseña restablecida. Ya puedes iniciar sesión.');
+    }
+  }, []);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSending(true);
     setError('');
+    setNotice('');
     const form = new FormData(event.currentTarget);
     const response = await fetch('/api/auth/login', {
       method: 'POST',
@@ -21,12 +30,21 @@ export default function LoginPage() {
         password: form.get('password'),
       }),
     });
+    const body = await response.json().catch(() => ({}));
     setSending(false);
+
     if (!response.ok) {
-      setError('No se ha podido iniciar sesión. Revisa tus credenciales.');
+      setError(Array.isArray(body?.message)
+        ? body.message.join(' ')
+        : body?.message || 'No se ha podido iniciar sesión. Revisa tus credenciales.');
       return;
     }
-    router.push('/');
+
+    if (body.mustChangePassword) {
+      router.push('/cuenta/cambiar-contrasena');
+    } else {
+      router.push('/');
+    }
     router.refresh();
   }
 
@@ -37,17 +55,23 @@ export default function LoginPage() {
         <h1>CÍCLOPE FP</h1>
         <p>Identifícate para acceder a tu espacio de trabajo y a las coordinaciones asignadas durante el curso.</p>
       </div>
+
+      {notice && <div className="successBox">{notice}</div>}
+      {error && <p className="errorBox">{error}</p>}
+
       <form className="actionForm" onSubmit={submit}>
         <fieldset>
           <legend>Credenciales</legend>
           <label>Correo electrónico<input type="email" name="email" autoComplete="email" required /></label>
           <label>Contraseña<input type="password" name="password" autoComplete="current-password" required /></label>
         </fieldset>
-        {error && <p className="errorBox">{error}</p>}
         <button className="primaryButton" disabled={sending}>{sending ? 'Accediendo…' : 'Entrar'}</button>
       </form>
-      <p className="hint">Si es la primera instalación, utiliza el asistente de configuración inicial.</p>
-      <a className="secondaryLink" href="/configuracion-inicial">Configuración inicial</a>
+
+      <div className="rowActions">
+        <a className="secondaryLink" href="/recuperar-contrasena">He olvidado mi contraseña</a>
+        <a className="secondaryLink" href="/configuracion-inicial">Configuración inicial</a>
+      </div>
     </main>
   );
 }
