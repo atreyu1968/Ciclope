@@ -8,6 +8,7 @@ import {
 } from '../generated/prisma/client';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { PrismaService } from '../database/prisma.service';
+import { CreateMilestoneDto } from './dto/create-milestone.dto';
 import { CreateObjectiveDto } from './dto/create-objective.dto';
 import { CreatePlanDto } from './dto/create-plan.dto';
 import { CreateTaskDto } from './dto/create-task.dto';
@@ -30,6 +31,11 @@ export class PlansService implements OnModuleInit {
         plan.id,
         plan.academicYear.id,
         plan.academicYear.name,
+        plan.network.id,
+      );
+      await this.ensureSharedMilestones(
+        plan.id,
+        plan.academicYear.id,
         plan.network.id,
       );
     }
@@ -63,6 +69,41 @@ export class PlansService implements OnModuleInit {
         ownerId: primaryCoordinator?.userId,
         official: true,
         officialKey: deadline.key,
+      })),
+      skipDuplicates: true,
+    });
+  }
+
+  private async ensureSharedMilestones(
+    planId: string,
+    academicYearId: string,
+    networkId: string,
+  ) {
+    const milestones = await this.prisma.academicYearMilestone.findMany({
+      where: { academicYearId },
+      orderBy: { dueDate: 'asc' },
+    });
+    if (!milestones.length) return;
+
+    const primaryCoordinator = await this.prisma.networkCoordinator.findFirst({
+      where: {
+        academicYearId,
+        networkId,
+        user: { active: true },
+      },
+      orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+      select: { userId: true },
+    });
+
+    await this.prisma.planTask.createMany({
+      data: milestones.map((milestone) => ({
+        planId,
+        title: milestone.title,
+        description: milestone.description,
+        dueDate: milestone.dueDate,
+        ownerId: primaryCoordinator?.userId,
+        official: milestone.official,
+        officialKey: `YEAR_MILESTONE:${milestone.id}`,
       })),
       skipDuplicates: true,
     });
@@ -154,16 +195,40 @@ export class PlansService implements OnModuleInit {
     });
     if (existing) throw new BadRequestException('Ya existe un plan para esa red y curso.');
 
-    const primaryCoordinator = await this.prisma.networkCoordinator.findFirst({
-      where: {
-        academicYearId: year.id,
-        networkId: network.id,
-        user: { active: true },
-      },
-      orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
-      select: { userId: true },
-    });
+    const [primaryCoordinator, sharedMilestones] = await Promise.all([
+      this.prisma.networkCoordinator.findFirst({
+        where: {
+          academicYearId: year.id,
+          networkId: network.id,
+          user: { active: true },
+        },
+        orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+        select: { userId: true },
+      }),
+      this.prisma.academicYearMilestone.findMany({
+        where: { academicYearId: year.id },
+        orderBy: { dueDate: 'asc' },
+      }),
+    ]);
     const officialDeadlines = officialPlanDeadlines(year.name);
+    const seededTasks = [
+      ...officialDeadlines.map((deadline) => ({
+        title: deadline.title,
+        description: deadline.description,
+        dueDate: new Date(deadline.dueDate),
+        ownerId: primaryCoordinator?.userId,
+        official: true,
+        officialKey: deadline.key,
+      })),
+      ...sharedMilestones.map((milestone) => ({
+        title: milestone.title,
+        description: milestone.description,
+        dueDate: milestone.dueDate,
+        ownerId: primaryCoordinator?.userId,
+        official: milestone.official,
+        officialKey: `YEAR_MILESTONE:${milestone.id}`,
+      })),
+    ];
 
     return this.prisma.annualPlan.create({
       data: {
@@ -171,18 +236,7 @@ export class PlansService implements OnModuleInit {
         networkId: network.id,
         title: dto.title?.trim() || `Plan anual de ${network.name} · ${year.name}`,
         summary: dto.summary?.trim() || null,
-        tasks: officialDeadlines.length
-          ? {
-              create: officialDeadlines.map((deadline) => ({
-                title: deadline.title,
-                description: deadline.description,
-                dueDate: new Date(deadline.dueDate),
-                ownerId: primaryCoordinator?.userId,
-                official: true,
-                officialKey: deadline.key,
-              })),
-            }
-          : undefined,
+        tasks: seededTasks.length ? { create: seededTasks } : undefined,
       },
       include: { network: true, academicYear: true, tasks: true },
     });
@@ -291,6 +345,59 @@ export class PlansService implements OnModuleInit {
       },
       orderBy: [{ plan: { network: { sortOrder: 'asc' } } }, { sortOrder: 'asc' }],
     });
+  }
+
+  async listMilestones(user: AuthenticatedUser, academicYearId?: string) {
+    const targetYearId = academicYearId ?? user.academicYearId;
+    if (!targetYearId) return [];
+    await this.assertYear(user, targetYearId);
+
+    return this.prisma.academicYearMilestone.findMany({
+      where: { academicYearId: targetYearId },
+      orderBy: { dueDate: 'asc' },
+    });
+  }
+
+  async createMilestone(user: AuthenticatedUser, dto: CreateMilestoneDto) {
+    if (!this.isGlobal(user)) {
+      throw new ForbiddenException('Solo la coordinación CÍCLOPE o la administración puede crear hitos comunes.');
+    }
+    if (!user.academicYearId) {
+      throw new BadRequestException('No existe un curso académico activo.');
+    }
+
+    const year = await this.assertYear(user, user.academicYearId);
+    const dueDate = new Date(dto.dueDate);
+    if (Number.isNaN(dueDate.getTime()) || dueDate < year.startsAt || dueDate > year.endsAt) {
+      throw new BadRequestException('La fecha del hito debe estar dentro del curso académico.');
+    }
+
+    const title = dto.title.trim();
+    const duplicate = await this.prisma.academicYearMilestone.findFirst({
+      where: { academicYearId: year.id, title, dueDate },
+      select: { id: true },
+    });
+    if (duplicate) throw new BadRequestException('Ese hito ya está registrado para la misma fecha.');
+
+    const milestone = await this.prisma.academicYearMilestone.create({
+      data: {
+        academicYearId: year.id,
+        title,
+        description: dto.description?.trim() || null,
+        dueDate,
+        official: true,
+      },
+    });
+
+    const plans = await this.prisma.annualPlan.findMany({
+      where: { academicYearId: year.id },
+      select: { id: true, networkId: true },
+    });
+    for (const plan of plans) {
+      await this.ensureSharedMilestones(plan.id, year.id, plan.networkId);
+    }
+
+    return { ...milestone, distributedToPlans: plans.length };
   }
 
   async updatePlanStatus(user: AuthenticatedUser, id: string, status: AnnualPlanStatus) {
