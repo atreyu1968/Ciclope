@@ -143,6 +143,7 @@ model User {
   ciclopeCoordinations    CiclopeCoordinator[]
   professionalFamilies    UserProfessionalFamily[]
   authoredCommunications  Communication[]           @relation("CommunicationAuthor")
+  communicationAttachments CommunicationAttachment[] @relation("CommunicationAttachmentUploader")
   communicationRecipients CommunicationRecipient[]
   emailJobs               EmailOutbox[]
   submittedStaffRequests  StaffRequest[]            @relation("StaffRequestSubmitter")
@@ -381,6 +382,7 @@ model Communication {
   author           User?                   @relation("CommunicationAuthor", fields: [authorId], references: [id], onDelete: SetNull)
   originNetwork    Network?                @relation(fields: [originNetworkId], references: [id], onDelete: SetNull)
   recipients       CommunicationRecipient[]
+  attachments      CommunicationAttachment[]
   emailJobs         EmailOutbox[]
   createdAt        DateTime                @default(now())
   updatedAt        DateTime                @updatedAt
@@ -388,6 +390,23 @@ model Communication {
   @@index([academicYearId, status])
   @@index([originNetworkId])
   @@index([authorId])
+}
+
+model CommunicationAttachment {
+  id              String        @id @default(cuid())
+  communicationId String
+  uploadedById    String?
+  originalName    String
+  storedName      String
+  path            String
+  mimeType        String
+  sizeBytes       Int
+  communication   Communication @relation(fields: [communicationId], references: [id], onDelete: Cascade)
+  uploadedBy      User?         @relation("CommunicationAttachmentUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt       DateTime      @default(now())
+
+  @@index([communicationId])
+  @@index([uploadedById])
 }
 
 model CommunicationRecipient {
