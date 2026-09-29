@@ -21,5 +21,7 @@ jobs:
         run: npm run db:generate
       - name: Validate Prisma schema
         run: npx prisma validate --config prisma7.config.ts
+      - name: Unit and authorization tests
+        run: npm run test:unit
       - name: Build
         run: npm run build
