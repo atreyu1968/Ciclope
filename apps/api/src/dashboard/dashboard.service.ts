@@ -18,6 +18,7 @@ export class DashboardService {
         activeYear: null,
         coordinationNetworks: [],
         pendingActions: 0,
+        stalePendingActions: 0,
         validatedWithoutEvidence: 0,
         overduePlanTasks: 0,
         nextPlanDeadline: null,
@@ -47,6 +48,7 @@ export class DashboardService {
       coordinationNetworks,
       pendingActions,
       pendingActionItems,
+      stalePendingActions,
       validatedWithoutEvidence,
       overduePlanTasks,
       nextPlanDeadline,
@@ -90,6 +92,14 @@ export class DashboardService {
         },
         orderBy: { createdAt: 'asc' },
         take: 5,
+      }),
+      this.prisma.action.count({
+        where: {
+          academicYearId: user.academicYearId,
+          status: ActionStatus.PENDING_VALIDATION,
+          createdAt: { lt: new Date(Date.now() - 7 * 24 * 60 * 60_000) },
+          ...coordinationNetworkFilter,
+        },
       }),
       this.prisma.action.count({
         where: {
@@ -275,6 +285,7 @@ export class DashboardService {
     const communicationFollowups = communicationItems.length;
     const rawMinutes =
       pendingActions * 1 +
+      stalePendingActions * 2 +
       validatedWithoutEvidence * 1 +
       overduePlanTasks * 2 +
       openStaffRequests * 3 +
@@ -293,6 +304,14 @@ export class DashboardService {
         href: '/coordinacion/buzon',
         estimatedMinutes: Math.min(15, Math.max(5, openStaffRequests * 3)),
         reason: 'Las consultas del claustro pueden bloquear trabajo de otras personas y conviene responderlas al comienzo de la sesión.',
+      }] : []),
+      ...(stalePendingActions ? [{
+        key: 'stale-pending-actions',
+        priority: 'high',
+        title: `${stalePendingActions} actuaciones llevan más de 7 días pendientes de validación`,
+        href: '/coordinacion/actuaciones',
+        estimatedMinutes: Math.min(20, Math.max(5, stalePendingActions * 2)),
+        reason: 'Estas actuaciones llevan demasiado tiempo en espera y deben priorizarse para evitar atascar la participación del claustro.',
       }] : []),
       ...(pendingActions ? [{
         key: 'pending-actions',
@@ -394,6 +413,7 @@ export class DashboardService {
       coordinationNetworks,
       pendingActions,
       pendingActionItems,
+      stalePendingActions,
       validatedWithoutEvidence,
       overduePlanTasks,
       nextPlanDeadline,
