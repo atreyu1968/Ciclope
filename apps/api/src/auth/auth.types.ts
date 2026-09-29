@@ -6,6 +6,9 @@ export type AuthenticatedUser = {
   email: string;
   firstName: string;
   lastName: string;
+  emailNotifications: boolean;
+  reminderEmails: boolean;
+  weeklySummaryEmail: boolean;
   roles: string[];
   mustChangePassword: boolean;
   academicYearId?: string;
