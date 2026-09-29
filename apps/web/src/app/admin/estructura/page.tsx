@@ -22,22 +22,30 @@ export default function StructureAdminPage() {
   const [families, setFamilies] = useState<Family[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(true);
 
   async function load() {
-    const [familiesResponse, groupsResponse] = await Promise.all([
-      fetch('/api/structure/families'),
-      fetch('/api/structure/groups'),
-    ]);
-    if (familiesResponse.status === 401 || groupsResponse.status === 401) {
-      router.push('/login');
-      return;
-    }
-    if (!familiesResponse.ok || !groupsResponse.ok) {
+    setLoading(true);
+    try {
+      const [familiesResponse, groupsResponse] = await Promise.all([
+        fetch('/api/structure/families'),
+        fetch('/api/structure/groups'),
+      ]);
+      if (familiesResponse.status === 401 || groupsResponse.status === 401) {
+        router.push('/login');
+        return;
+      }
+      if (!familiesResponse.ok || !groupsResponse.ok) {
+        setMessage('No se pudo cargar la estructura académica.');
+        return;
+      }
+      setFamilies(await familiesResponse.json());
+      setGroups(await groupsResponse.json());
+    } catch {
       setMessage('No se pudo cargar la estructura académica.');
-      return;
+    } finally {
+      setLoading(false);
     }
-    setFamilies(await familiesResponse.json());
-    setGroups(await groupsResponse.json());
   }
 
   useEffect(() => { void load(); }, []);
@@ -95,6 +103,12 @@ export default function StructureAdminPage() {
       </div>
 
       {message && <div className="notice">{message}</div>}
+      {loading && (
+        <div className="loadingState" role="status" aria-live="polite">
+          <span className="loadingSpinner" aria-hidden="true" />
+          <strong>Cargando estructura académica…</strong>
+        </div>
+      )}
 
       <section className="adminGrid">
         <article className="panel">
@@ -107,6 +121,9 @@ export default function StructureAdminPage() {
 
           <div className="assignmentList structureList">
             <h3>Familias del centro</h3>
+            {!loading && !families.length && (
+              <div className="emptyState"><h3>Sin familias profesionales</h3><p>Crea la primera familia para poder organizar grupos y profesorado.</p></div>
+            )}
             {families.map((family) => (
               <div className="assignmentRow" key={family.id}>
                 <div>
@@ -144,6 +161,9 @@ export default function StructureAdminPage() {
 
           <div className="assignmentList structureList">
             <h3>Grupos del curso activo</h3>
+            {!loading && !groups.length && (
+              <div className="emptyState"><h3>Sin grupos en el curso activo</h3><p>Crea un grupo cuando exista al menos una familia profesional configurada.</p></div>
+            )}
             {groups.map((group) => (
               <div className="assignmentRow" key={group.id}>
                 <div>
