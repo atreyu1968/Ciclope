@@ -32,6 +32,7 @@ type FrozenReport = {
       values: Array<{ value: string; label: string; count: number }>;
     }>;
   }>;
+  alerts?: Array<{ key: string; severity: 'INFO' | 'WARNING' | 'CRITICAL'; title: string; detail: string }>;
   planProgress: Array<{
     id: string;
     title: string;
@@ -208,6 +209,22 @@ export default function HistoricalReportDetailPage() {
           <div><strong>{report.totals.evidence}</strong><span>evidencias</span></div>
           <div><strong>{report.totals.evidenceCoveragePercent}%</strong><span>cobertura documental</span></div>
         </section>
+
+        {report.alerts && report.alerts.length > 0 && (
+          <section className="reportSection">
+            <h2>Alertas conservadas en el corte</h2>
+            <div className="assignmentList">
+              {report.alerts.map((alert) => (
+                <div className="assignmentRow" key={alert.key}>
+                  <div><strong>{alert.title}</strong><span>{alert.detail}</span></div>
+                  <span className={alert.severity === 'CRITICAL' ? 'badge dangerBadge' : 'badge warningChip'}>
+                    {alert.severity === 'CRITICAL' ? 'Crítica' : 'Revisar'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {(snapshot.narrative || snapshot.status === 'SAVED') && (
           <section className="reportSection aiInterpretation">
