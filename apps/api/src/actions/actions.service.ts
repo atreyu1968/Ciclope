@@ -203,6 +203,7 @@ export class ActionsService {
         submittedByName: `${user.firstName} ${user.lastName}`.trim(),
         submittedByEmail: user.email,
         academicYearId: user.academicYearId,
+        status: dto.saveAsDraft ? ActionStatus.DRAFT : ActionStatus.PENDING_VALIDATION,
         networks: { create: uniqueNetworkIds.map((networkId) => ({ networkId })) },
         groups: { create: uniqueGroupIds.map((teachingGroupId) => ({ teachingGroupId })) },
         objectives: { create: uniqueObjectiveIds.map((objectiveId) => ({ objectiveId })) },
@@ -284,7 +285,12 @@ export class ActionsService {
     });
   }
 
-  async resubmit(id: string, dto: CreateActionDto, user: AuthenticatedUser) {
+  async resubmit(
+    id: string,
+    dto: CreateActionDto,
+    user: AuthenticatedUser,
+    requireReturned = true,
+  ) {
     if (!user.academicYearId) throw new BadRequestException('No existe un curso académico activo.');
 
     const current = await this.prisma.action.findFirst({
@@ -295,8 +301,11 @@ export class ActionsService {
       },
     });
     if (!current) throw new NotFoundException('Actuación no encontrada.');
-    if (current.status !== ActionStatus.RETURNED) {
+    if (requireReturned && current.status !== ActionStatus.RETURNED) {
       throw new BadRequestException('Solo pueden reenviarse actuaciones devueltas para corrección.');
+    }
+    if (!requireReturned && ![ActionStatus.DRAFT, ActionStatus.PENDING_VALIDATION].includes(current.status)) {
+      throw new BadRequestException('Solo pueden editarse actuaciones que aún no han sido validadas.');
     }
 
     const uniqueNetworkIds = [...new Set(dto.networkIds)];
@@ -358,7 +367,11 @@ export class ActionsService {
         durationMinutes: dto.durationMinutes,
         studentCount: dto.studentCount ?? (groups.length ? inferredStudentCount : undefined),
         networkDetails,
-        status: ActionStatus.PENDING_VALIDATION,
+        status: requireReturned
+          ? ActionStatus.PENDING_VALIDATION
+          : dto.saveAsDraft
+            ? ActionStatus.DRAFT
+            : ActionStatus.PENDING_VALIDATION,
         returnedAt: null,
         returnedReason: null,
         validatedAt: null,
@@ -374,6 +387,55 @@ export class ActionsService {
         objectives: {
           deleteMany: {},
           create: uniqueObjectiveIds.map((objectiveId) => ({ objectiveId })),
+        },
+      },
+      include: {
+        networks: { include: { network: true } },
+        groups: { include: { teachingGroup: true } },
+        objectives: { include: { objective: true } },
+      },
+    });
+  }
+
+  async duplicate(id: string, user: AuthenticatedUser) {
+    if (!user.academicYearId) throw new BadRequestException('No existe un curso académico activo.');
+
+    const source = await this.prisma.action.findFirst({
+      where: {
+        id,
+        submittedById: user.id,
+        academicYearId: user.academicYearId,
+      },
+      include: {
+        networks: true,
+        groups: true,
+        objectives: true,
+      },
+    });
+    if (!source) throw new NotFoundException('Actuación no encontrada.');
+
+    return this.prisma.action.create({
+      data: {
+        academicYearId: user.academicYearId,
+        title: `${source.title} (copia)`.slice(0, 180),
+        description: source.description,
+        type: source.type,
+        activityDate: source.activityDate,
+        durationMinutes: source.durationMinutes,
+        studentCount: source.studentCount,
+        networkDetails: source.networkDetails ?? undefined,
+        status: ActionStatus.DRAFT,
+        submittedById: user.id,
+        submittedByName: `${user.firstName} ${user.lastName}`.trim(),
+        submittedByEmail: user.email,
+        networks: {
+          create: source.networks.map((item) => ({ networkId: item.networkId })),
+        },
+        groups: {
+          create: source.groups.map((item) => ({ teachingGroupId: item.teachingGroupId })),
+        },
+        objectives: {
+          create: source.objectives.map((item) => ({ objectiveId: item.objectiveId })),
         },
       },
       include: {
