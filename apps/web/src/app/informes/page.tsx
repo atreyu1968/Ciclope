@@ -325,9 +325,23 @@ export default function ReportsPage() {
           {aiText && (
             <section className="reportSection aiInterpretation">
               <h2>{aiMode === 'draft' ? 'Borrador de memoria asistido por IA' : 'Interpretación asistida por IA'}</h2>
-              <p className="preLine">{aiText}</p>
+              <div className="noPrint">
+                <label>
+                  Narrativa editable
+                  <textarea
+                    rows={18}
+                    maxLength={60000}
+                    value={aiText}
+                    onChange={(event) => setAiText(event.target.value)}
+                  />
+                </label>
+                <p className="reportNote">
+                  Revisa, corrige o completa el texto antes de guardar el corte. Al guardar, esta versión exacta queda conservada como narrativa del informe.
+                </p>
+              </div>
+              <p className="preLine printOnly">{aiText}</p>
               <p className="reportNote">
-                Texto generado a partir de indicadores agregados. Debe ser revisado por la coordinación antes de incorporarlo a una memoria oficial.
+                Texto generado a partir de indicadores agregados y revisable por la coordinación antes de su uso oficial.
               </p>
             </section>
           )}
