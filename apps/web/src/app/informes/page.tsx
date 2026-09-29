@@ -128,6 +128,8 @@ export default function ReportsPage() {
   const [comparison, setComparison] = useState<Summary | null>(null);
   const [comparisonLoading, setComparisonLoading] = useState(false);
   const [comparisonError, setComparisonError] = useState('');
+  const [officeExporting, setOfficeExporting] = useState<'docx'|'odt'|''>('');
+  const [officeExportError, setOfficeExportError] = useState('');
 
   useEffect(() => {
     Promise.all([
@@ -203,6 +205,47 @@ export default function ReportsPage() {
     if (toDate) params.set('to', toDate);
     return `/api/reports/actions.csv?${params.toString()}`;
   }
+
+  async function exportOffice(format: 'docx' | 'odt') {
+    if (!yearId || !summary) return;
+    setOfficeExporting(format);
+    setOfficeExportError('');
+
+    const params = new URLSearchParams({ academicYearId: yearId });
+    if (networkId) params.set('networkId', networkId);
+    if (fromDate) params.set('from', fromDate);
+    if (toDate) params.set('to', toDate);
+
+    const response = await fetch(`/api/reports/export.${format}?${params.toString()}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ narrative: aiText || undefined }),
+    });
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      setOfficeExporting('');
+      setOfficeExportError(
+        Array.isArray(body.message) ? body.message.join(' ') : body.message || 'No se pudo generar el documento.',
+      );
+      return;
+    }
+
+    const blob = await response.blob();
+    const disposition = response.headers.get('content-disposition') || '';
+    const match = disposition.match(/filename="?([^";]+)"?/i);
+    const filename = match?.[1] || `ciclope-memoria.${format}`;
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+    setOfficeExporting('');
+  }
+
 
   async function processWithAi(mode: 'interpretation'|'draft') {
     if (!yearId) return;
@@ -302,6 +345,22 @@ export default function ReportsPage() {
             {aiLoading === 'draft' ? 'Redactando…' : 'Redactar memoria con IA'}
           </button>
           <a className="secondaryButton" href={csvHref()}>Exportar CSV</a>
+          <button
+            className="secondaryButton"
+            type="button"
+            onClick={() => void exportOffice('docx')}
+            disabled={Boolean(officeExporting) || loading || !summary}
+          >
+            {officeExporting === 'docx' ? 'Generando DOCX…' : 'Exportar DOCX'}
+          </button>
+          <button
+            className="secondaryButton"
+            type="button"
+            onClick={() => void exportOffice('odt')}
+            disabled={Boolean(officeExporting) || loading || !summary}
+          >
+            {officeExporting === 'odt' ? 'Generando ODT…' : 'Exportar ODT'}
+          </button>
           <button className="primaryButton" onClick={() => window.print()}>Imprimir / guardar PDF</button>
           <a className="secondaryButton" href="/coordinacion">Volver</a>
         </div>
@@ -426,6 +485,7 @@ export default function ReportsPage() {
       {snapshotError && <div className="errorBox noPrint">{snapshotError}</div>}
       {error && <div className="errorBox noPrint">{error}</div>}
       {aiError && <div className="errorBox noPrint">{aiError}</div>}
+      {officeExportError && <div className="errorBox noPrint">{officeExportError}</div>}
       {loading && <div className="panel noPrint"><p>Generando informe…</p></div>}
 
       {summary && !loading && (
