@@ -371,6 +371,7 @@ model CommunicationRecipient {
 
 model EmailOutbox {
   id              String            @id @default(cuid())
+  dedupeKey       String?           @unique
   communicationId String?
   userId          String?
   recipientEmail  String
