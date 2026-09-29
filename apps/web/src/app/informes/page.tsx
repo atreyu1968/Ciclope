@@ -478,7 +478,7 @@ export default function ReportsPage() {
             Selecciona el mismo curso para comparar dos periodos o un curso distinto para una comparativa interanual.
           </span>
         </div>
-        {comparisonError && <div className="errorBox">{comparisonError}</div>}
+        {comparisonError && <div className="errorBox" role="alert">{comparisonError}</div>}
       </section>
 
       {snapshotMessage && <div className="notice noPrint">{snapshotMessage}</div>}
