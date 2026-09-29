@@ -157,7 +157,7 @@
 - [x] Progreso de objetivos.
 - [x] Vinculación actuaciones-objetivos.
 - [x] Recordatorios automáticos de plazos.
-- [ ] Agenda priorizada de la hora semanal: qué hacer primero y por qué.
+- [x] Agenda priorizada de la hora semanal: qué hacer primero y por qué.
 - [ ] Marcar/posponer tareas desde el propio dashboard.
 - [x] Resumen semanal automático para cada coordinador.
 - [ ] Detección automática de redes/objetivos sin actividad reciente.
