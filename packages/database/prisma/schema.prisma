@@ -85,6 +85,7 @@ model Center {
   academicYears        AcademicYear[]
   users                User[]
   professionalFamilies ProfessionalFamily[]
+  integrationSettings  CenterIntegrationSettings?
 }
 
 model AcademicYear {
@@ -499,4 +500,22 @@ model ActionObjective {
 
   @@id([actionId, objectiveId])
   @@index([objectiveId])
+}
+
+
+model CenterIntegrationSettings {
+  id                    String   @id @default(cuid())
+  centerId              String   @unique
+  resendEnabled         Boolean  @default(false)
+  resendApiKeyEncrypted String?
+  resendFromEmail       String?
+  resendFromName        String?
+  aiEnabled             Boolean  @default(false)
+  aiProviderName        String?
+  aiBaseUrl             String?
+  aiModel               String?
+  aiApiKeyEncrypted     String?
+  center                Center   @relation(fields: [centerId], references: [id], onDelete: Cascade)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 }
