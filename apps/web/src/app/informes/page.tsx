@@ -3,12 +3,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-type Year = { id: string; name: string; isActive: boolean };
+type Year = { id: string; name: string; startsAt: string; endsAt: string; isActive: boolean };
 type Network = { id: string; name: string };
 type Summary = {
   center: { name: string; code?: string | null };
   academicYear: { id: string; name: string; startsAt: string; endsAt: string; isActive: boolean };
   network?: { id: string; name: string } | null;
+  period: { from: string; to: string; filtered: boolean };
   totals: {
     validatedActions: number;
     pendingActions: number;
@@ -84,6 +85,8 @@ export default function ReportsPage() {
   const [networks, setNetworks] = useState<Network[]>([]);
   const [yearId, setYearId] = useState('');
   const [networkId, setNetworkId] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [summary, setSummary] = useState<Summary | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -118,8 +121,12 @@ export default function ReportsPage() {
     if (!yearId) return;
     setLoading(true);
     setError('');
+    setAiText('');
+    setAiError('');
     const params = new URLSearchParams({ academicYearId: yearId });
     if (networkId) params.set('networkId', networkId);
+    if (fromDate) params.set('from', fromDate);
+    if (toDate) params.set('to', toDate);
 
     fetch(`/api/reports/summary?${params.toString()}`).then(async (response) => {
       if (response.status === 401) {
@@ -134,7 +141,12 @@ export default function ReportsPage() {
       }
       setSummary(body);
     }).finally(() => setLoading(false));
-  }, [yearId, networkId, router]);
+  }, [yearId, networkId, fromDate, toDate, router]);
+
+  const selectedYear = useMemo(
+    () => years.find((year) => year.id === yearId),
+    [years, yearId],
+  );
 
   const maxMonthly = useMemo(
     () => Math.max(1, ...(summary?.byMonth.map((item) => item.actions) ?? [1])),
@@ -144,6 +156,8 @@ export default function ReportsPage() {
   function csvHref() {
     const params = new URLSearchParams({ academicYearId: yearId });
     if (networkId) params.set('networkId', networkId);
+    if (fromDate) params.set('from', fromDate);
+    if (toDate) params.set('to', toDate);
     return `/api/reports/actions.csv?${params.toString()}`;
   }
 
@@ -153,6 +167,8 @@ export default function ReportsPage() {
     setAiError('');
     const params = new URLSearchParams({ academicYearId: yearId, mode });
     if (networkId) params.set('networkId', networkId);
+    if (fromDate) params.set('from', fromDate);
+    if (toDate) params.set('to', toDate);
     const response = await fetch(`/api/reports/interpret?${params.toString()}`, { method: 'POST' });
     const body = await response.json().catch(() => ({}));
     setAiLoading('');
@@ -188,7 +204,11 @@ export default function ReportsPage() {
       <section className="panel reportFilters noPrint">
         <div className="twoColumns">
           <label>Curso académico
-            <select value={yearId} onChange={(e) => setYearId(e.target.value)}>
+            <select value={yearId} onChange={(e) => {
+              setYearId(e.target.value);
+              setFromDate('');
+              setToDate('');
+            }}>
               {years.map((year) => <option key={year.id} value={year.id}>{year.name}{year.isActive ? ' · activo' : ''}</option>)}
             </select>
           </label>
@@ -199,9 +219,37 @@ export default function ReportsPage() {
             </select>
           </label>
         </div>
+        <div className="twoColumns reportPeriodRow">
+          <label>Desde
+            <input
+              type="date"
+              value={fromDate}
+              min={selectedYear?.startsAt?.slice(0, 10)}
+              max={toDate || selectedYear?.endsAt?.slice(0, 10)}
+              onChange={(e) => setFromDate(e.target.value)}
+            />
+          </label>
+          <label>Hasta
+            <input
+              type="date"
+              value={toDate}
+              min={fromDate || selectedYear?.startsAt?.slice(0, 10)}
+              max={selectedYear?.endsAt?.slice(0, 10)}
+              onChange={(e) => setToDate(e.target.value)}
+            />
+          </label>
+        </div>
+        {(fromDate || toDate) && (
+          <div className="rowActions reportPeriodActions">
+            <span className="hint">El periodo se aplica al informe, CSV y herramientas de IA.</span>
+            <button className="textButton" type="button" onClick={() => { setFromDate(''); setToDate(''); }}>
+              Ver curso completo
+            </button>
+          </div>
+        )}
       </section>
 
-      {error && <div className="errorBox noPrint">{error}</div>}
+      {error && <div className="errorBox noPrint">{error}</div>
       {aiError && <div className="errorBox noPrint">{aiError}</div>}
       {loading && <div className="panel noPrint"><p>Generando informe…</p></div>}
 
@@ -212,12 +260,17 @@ export default function ReportsPage() {
             <h1>{summary.network?.name || 'Redes de Enseñanzas Profesionales'}</h1>
             <p>{summary.center.name}{summary.center.code ? ` · ${summary.center.code}` : ''}</p>
             <p>Curso académico {summary.academicYear.name}</p>
+            {summary.period.filtered && (
+              <p>
+                Periodo: {new Date(summary.period.from).toLocaleDateString('es-ES')} – {new Date(summary.period.to).toLocaleDateString('es-ES')}
+              </p>
+            )}
           </header>
 
           <section className="reportSection">
             <h2>Resumen ejecutivo</h2>
             <p>
-              Durante el curso {summary.academicYear.name} se han validado <strong>{summary.totals.validatedActions}</strong> actuaciones
+              {summary.period.filtered ? 'Durante el periodo seleccionado' : `Durante el curso ${summary.academicYear.name}`} se han validado <strong>{summary.totals.validatedActions}</strong> actuaciones
               {summary.network ? ` vinculadas a la red de ${summary.network.name}` : ' dentro del ámbito consultado'}.
               Han participado <strong>{summary.totals.teachers}</strong> docentes y se han registrado
               <strong> {summary.totals.studentParticipations}</strong> participaciones de alumnado. Las actuaciones acumulan
