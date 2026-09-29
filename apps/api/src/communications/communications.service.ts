@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { CommunicationStatus, Shift } from '../generated/prisma/client';
+import { CommunicationStatus, EmailOutboxStatus, Shift } from '../generated/prisma/client';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { PrismaService } from '../database/prisma.service';
 import { MailOutboxService } from '../mail/mail-outbox.service';
@@ -199,6 +199,88 @@ export class CommunicationsService {
         responseText: response.trim(),
       },
     });
+  }
+
+  async mailJobs(user: AuthenticatedUser) {
+    if (!user.academicYearId) return [];
+
+    return this.prisma.emailOutbox.findMany({
+      where: {
+        communicationId: { not: null },
+        communication: {
+          academicYearId: user.academicYearId,
+          ...(this.canPublishGlobally(user)
+            ? {}
+            : { originNetworkId: { in: user.coordinatorNetworkIds } }),
+        },
+      },
+      include: {
+        communication: {
+          select: {
+            id: true,
+            title: true,
+            originNetwork: { select: { id: true, name: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 300,
+    });
+  }
+
+  async retryMailJob(user: AuthenticatedUser, jobId: string) {
+    const job = await this.prisma.emailOutbox.findUnique({
+      where: { id: jobId },
+      include: {
+        communication: {
+          include: {
+            academicYear: true,
+            originNetwork: true,
+          },
+        },
+      },
+    });
+
+    if (!job?.communication || job.communication.academicYear.centerId !== user.centerId) {
+      throw new NotFoundException('Envío no encontrado.');
+    }
+    if (job.communication.academicYearId !== user.academicYearId) {
+      throw new ForbiddenException('El envío pertenece a otro curso académico.');
+    }
+    if (
+      !this.canPublishGlobally(user) &&
+      (!job.communication.originNetworkId || !user.coordinatorNetworkIds.includes(job.communication.originNetworkId))
+    ) {
+      throw new ForbiddenException('No puedes gestionar este envío.');
+    }
+    if (job.status !== EmailOutboxStatus.FAILED) {
+      throw new BadRequestException('Solo pueden reintentarse envíos que han agotado sus intentos automáticos.');
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.emailOutbox.update({
+        where: { id: job.id },
+        data: {
+          status: EmailOutboxStatus.QUEUED,
+          attempts: 0,
+          nextAttemptAt: new Date(),
+          lastError: null,
+        },
+      }),
+      this.prisma.auditLog.create({
+        data: {
+          centerId: user.centerId,
+          actorId: user.id,
+          action: 'EMAIL_DELIVERY_RETRIED',
+          entityType: 'EmailOutbox',
+          entityId: job.id,
+          details: { communicationId: job.communicationId, recipientEmail: job.recipientEmail },
+        },
+      }),
+    ]);
+
+    void this.mail.processBatch();
+    return { success: true };
   }
 
   async remindPending(user: AuthenticatedUser, communicationId: string) {
