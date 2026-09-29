@@ -14,7 +14,7 @@ export class UsersController {
   constructor(private readonly users: UsersService) {}
 
   @Get()
-  @Roles('SUPERADMIN', 'ADMIN_CENTRO', 'DIRECCION', 'COORDINADOR_CICLOPE')
+  @Roles('SUPERADMIN', 'ADMIN_CENTRO', 'DIRECCION', 'COORDINADOR_CICLOPE', 'COORD_INNOVACION', 'COORD_EMPRENDIMIENTO', 'COORD_IOP', 'COORD_CALIDAD')
   list(@CurrentUser() user: AuthenticatedUser) {
     return this.users.list(user.centerId);
   }
