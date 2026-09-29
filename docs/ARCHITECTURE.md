@@ -124,3 +124,23 @@ Los planes del curso 2026-2027 incorporan automáticamente los hitos conocidos p
 Se modelan como `PlanTask` con `official=true` y una `officialKey` estable. La restricción única `planId + officialKey` permite ejecutar el backfill en cada arranque sin duplicar tareas.
 
 Los informes trimestrales se gestionan como tareas del plan cuando la DGFPERE publique las fechas concretas.
+
+
+## Informes por periodo
+
+Los endpoints de informes aceptan `from` y `to` en formato `YYYY-MM-DD`. El mismo alcance temporal se utiliza para:
+
+- resumen de indicadores;
+- exportación CSV;
+- impresión/PDF;
+- interpretación con IA;
+- redacción asistida de memoria.
+
+Las actuaciones del periodo se filtran por `activityDate`. El progreso de los objetivos del plan se mantiene como avance acumulado hasta la fecha final del periodo, evitando comparar una meta anual únicamente contra la actividad aislada de un trimestre.
+
+## Hitos comunes del curso
+
+`AcademicYearMilestone` permite registrar una fecha común una sola vez. Al crearla, CÍCLOPE genera una `PlanTask` equivalente en todos los planes existentes del curso y la conserva como plantilla para planes creados posteriormente.
+
+Cada tarea distribuida utiliza `officialKey = YEAR_MILESTONE:<id>`, por lo que la sincronización es idempotente.
+Esta función está reservada a administración, dirección y coordinación CÍCLOPE.
