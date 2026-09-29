@@ -6,7 +6,7 @@
     "build": "nest build",
     "start": "node dist/main.js",
     "start:dev": "nest start --watch",
-    "test:unit": "tsx --test test/auth-and-critical-services.test.ts",
+    "test:unit": "tsx --test test/auth-and-critical-services.test.ts test/permission-matrix.test.ts",
     "test:integration": "tsx --test test/database.integration.test.ts"
   },
   "dependencies": {
