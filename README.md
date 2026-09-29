@@ -58,3 +58,7 @@ La integración de IA utiliza una API compatible con Chat Completions. En los in
 ## Instalación
 
 El script `scripts/install-ubuntu.sh` instala las dependencias, PostgreSQL, Node.js, Nginx, crea el usuario de servicio, genera secretos, ejecuta migraciones, compila la aplicación y activa los servicios systemd.
+
+Si ya conoces el dominio público puedes ejecutar el instalador con `CICLOPE_PUBLIC_URL=https://ciclope.midominio.es`, de modo que los enlaces generados por CÍCLOPE queden configurados desde el primer arranque.
+
+Para publicar el servidor con **dominio, HTTPS y Cloudflare Tunnel**, consulta `docs/DEPLOYMENT_UBUNTU_CLOUDFLARE.md`. El procedimiento mantiene Next.js, NestJS y PostgreSQL en el servidor y publica únicamente Nginx a través del túnel.
