@@ -101,7 +101,14 @@ export default function CoordinationCalendarPage() {
     return <main className="shell"><div className="errorBox">{error}</div></main>;
   }
   if (!data || (data.academicYear && !cursor)) {
-    return <main className="shell"><p>Cargando calendario…</p></main>;
+    return (
+      <main className="shell">
+        <div className="loadingState" role="status" aria-live="polite">
+          <span className="loadingSpinner" aria-hidden="true" />
+          <strong>Cargando calendario de coordinación…</strong>
+        </div>
+      </main>
+    );
   }
 
   if (!data.academicYear || !cursor) {
@@ -111,7 +118,11 @@ export default function CoordinationCalendarPage() {
           <div><p className="eyebrow">Planificación</p><h1>Calendario de coordinación</h1></div>
           <a className="secondaryButton" href="/coordinacion">Volver</a>
         </div>
-        <div className="panel"><p className="empty">No existe un curso académico activo para mostrar el calendario.</p></div>
+        <div className="emptyState">
+          <h2>No hay un curso académico activo</h2>
+          <p>Activa un curso desde Administración para poder mostrar tareas e hitos en el calendario de coordinación.</p>
+          <div className="rowActions"><a className="secondaryButton" href="/admin/cursos">Gestionar cursos</a></div>
+        </div>
       </main>
     );
   }
@@ -251,7 +262,13 @@ export default function CoordinationCalendarPage() {
               </tbody>
             </table>
           </div>
-        ) : <p className="empty">No hay tareas o hitos con fecha en los planes autorizados.</p>}
+        ) : (
+          <div className="emptyState">
+            <h3>Sin compromisos con fecha</h3>
+            <p>No hay tareas o hitos fechados en los planes que puedes consultar. Añade fechas para que aparezcan en este calendario.</p>
+            <div className="rowActions"><a className="secondaryButton" href="/coordinacion/planes">Abrir planes</a></div>
+          </div>
+        )}
       </section>
     </main>
   );
