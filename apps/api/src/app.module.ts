@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AcademicYearsModule } from './academic-years/academic-years.module';
+import { AssistantModule } from './assistant/assistant.module';
 import { ActionsModule } from './actions/actions.module';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
@@ -23,6 +24,7 @@ import { UsersModule } from './users/users.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: ['.env', '../../.env'] }),
     DatabaseModule,
+    AssistantModule,
     SetupModule,
     AuthModule,
     AuditModule,
