@@ -178,8 +178,8 @@
 - [x] IA para interpretar datos.
 - [x] IA para redactar borrador de memoria.
 - [x] Datos enviados a IA limitados a información agregada.
-- [ ] Editor del borrador de memoria antes de guardar/presentar.
-- [ ] Guardar la versión IA como narrativa del snapshot.
+- [x] Editor del borrador de memoria antes de guardar/presentar.
+- [x] Guardar la versión IA como narrativa del snapshot.
 - [ ] Exportación DOCX/ODT de memoria.
 - [ ] Comparativa entre periodos del mismo curso.
 - [ ] Comparativa interanual.
