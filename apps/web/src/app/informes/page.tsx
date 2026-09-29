@@ -486,7 +486,12 @@ export default function ReportsPage() {
       {error && <div className="errorBox noPrint">{error}</div>}
       {aiError && <div className="errorBox noPrint">{aiError}</div>}
       {officeExportError && <div className="errorBox noPrint">{officeExportError}</div>}
-      {loading && <div className="panel noPrint"><p>Generando informe…</p></div>}
+      {loading && (
+        <div className="loadingState noPrint" role="status" aria-live="polite">
+          <span className="loadingSpinner" aria-hidden="true" />
+          <strong>Generando informe e indicadores…</strong>
+        </div>
+      )}
 
       {summary && !loading && (
         <article className="reportDocument">
