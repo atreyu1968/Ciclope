@@ -26,8 +26,8 @@ export class CommunicationsController {
 
   @Get('mail-status')
   @Roles(...PUBLISHERS)
-  mailStatus() {
-    return this.communications.mailStatus();
+  mailStatus(@CurrentUser() user: AuthenticatedUser) {
+    return this.communications.mailStatus(user.centerId);
   }
 
   @Post()
