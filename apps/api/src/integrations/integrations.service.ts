@@ -154,6 +154,46 @@ export class IntegrationsService {
     };
   }
 
+  private escapeHtml(value: string) {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  private institutionalEmailHtml(subject: string, text: string) {
+    const safeSubject = this.escapeHtml(subject);
+    const paragraphs = text
+      .split(/\n{2,}/)
+      .map((block) => block.trim())
+      .filter(Boolean)
+      .map((block) => `<p style="margin:0 0 16px;line-height:1.6;color:#27313a;">${this.escapeHtml(block).replace(/\n/g, '<br>')}</p>`)
+      .join('');
+
+    return `<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;background:#f3f6f8;font-family:Arial,Helvetica,sans-serif;color:#27313a;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f3f6f8;padding:24px 12px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:680px;background:#ffffff;border:1px solid #d9e1e7;border-radius:14px;overflow:hidden;">
+        <tr><td style="background:#173f5f;padding:22px 28px;color:#ffffff;">
+          <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;">CÍCLOPE FP</div>
+          <h1 style="margin:6px 0 0;font-size:22px;line-height:1.3;color:#ffffff;">${safeSubject}</h1>
+        </td></tr>
+        <tr><td style="padding:28px;">${paragraphs}</td></tr>
+        <tr><td style="padding:18px 28px;background:#f7f9fa;border-top:1px solid #e2e8ed;color:#65717c;font-size:12px;line-height:1.5;">
+          Mensaje generado por CÍCLOPE FP · Redes de Enseñanzas Profesionales. Si el mensaje contiene un enlace a CÍCLOPE, accede únicamente mediante el dominio oficial de tu centro.
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+  }
+
   async sendResend(
     centerId: string,
     to: string,
@@ -176,6 +216,7 @@ export class IntegrationsService {
         to: [to],
         subject,
         text,
+        html: this.institutionalEmailHtml(subject, text),
       }),
     });
 
