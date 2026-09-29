@@ -7,6 +7,8 @@ type DashboardData = {
   activeYear: { id: string; name: string } | null;
   coordinationNetworks: Array<{ id: string; name: string }>;
   pendingActions: number;
+  validatedWithoutEvidence: number;
+  overduePlanTasks: number;
   openStaffRequests: number;
   returnedOwnActions: number;
   unreadCommunications: number;
@@ -70,6 +72,8 @@ export default function CoordinationDashboardPage() {
 
       <section className="statsGrid">
         <article className="statCard"><strong>{data.pendingActions}</strong><span>actuaciones por validar</span></article>
+        <article className="statCard"><strong>{data.validatedWithoutEvidence}</strong><span>validadas sin evidencia</span></article>
+        <article className="statCard"><strong>{data.overduePlanTasks}</strong><span>tareas del plan vencidas</span></article>
         <article className="statCard"><strong>{data.openStaffRequests}</strong><span>consultas del claustro abiertas</span></article>
         <article className="statCard"><strong>{data.communicationFollowups}</strong><span>comunicaciones con pendientes</span></article>
         <article className="statCard"><strong>{data.unreadCommunications}</strong><span>mensajes sin leer</span></article>
@@ -100,6 +104,7 @@ export default function CoordinationDashboardPage() {
 
       <section className="quickLinks">
         <a className="secondaryButton" href="/coordinacion/actuaciones">Actuaciones</a>
+        <a className="secondaryButton" href="/coordinacion/planes">Planes anuales</a>
         <a className="secondaryButton" href="/coordinacion/comunicaciones">Comunicaciones enviadas</a>
         <a className="secondaryButton" href="/coordinacion/buzon">Buzón del claustro</a>
         <a className="secondaryButton" href="/comunicaciones/nueva">Publicar comunicación</a>
