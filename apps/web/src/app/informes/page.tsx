@@ -65,6 +65,9 @@ export default function ReportsPage() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [aiText, setAiText] = useState('');
+  const [aiError, setAiError] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -121,6 +124,22 @@ export default function ReportsPage() {
     return `/api/reports/actions.csv?${params.toString()}`;
   }
 
+  async function interpretWithAi() {
+    if (!yearId) return;
+    setAiLoading(true);
+    setAiError('');
+    const params = new URLSearchParams({ academicYearId: yearId });
+    if (networkId) params.set('networkId', networkId);
+    const response = await fetch(`/api/reports/interpret?${params.toString()}`, { method: 'POST' });
+    const body = await response.json().catch(() => ({}));
+    setAiLoading(false);
+    if (!response.ok) {
+      setAiError(Array.isArray(body.message) ? body.message.join(' ') : body.message || 'No se pudo interpretar el informe con IA.');
+      return;
+    }
+    setAiText(body.text || '');
+  }
+
   return (
     <main className="shell reportShell">
       <div className="pageHeader noPrint">
@@ -130,6 +149,9 @@ export default function ReportsPage() {
           <p className="lead">Las cifras se recalculan a partir de actuaciones validadas, sin transcribir datos.</p>
         </div>
         <div className="rowActions">
+          <button className="secondaryButton" onClick={() => void interpretWithAi()} disabled={aiLoading || loading || !summary}>
+            {aiLoading ? 'Interpretando…' : 'Interpretar con IA'}
+          </button>
           <a className="secondaryButton" href={csvHref()}>Exportar CSV</a>
           <button className="primaryButton" onClick={() => window.print()}>Imprimir / guardar PDF</button>
           <a className="secondaryButton" href="/coordinacion">Volver</a>
@@ -153,6 +175,7 @@ export default function ReportsPage() {
       </section>
 
       {error && <div className="errorBox noPrint">{error}</div>}
+      {aiError && <div className="errorBox noPrint">{aiError}</div>}
       {loading && <div className="panel noPrint"><p>Generando informe…</p></div>}
 
       {summary && !loading && (
@@ -177,6 +200,16 @@ export default function ReportsPage() {
               “Participaciones de alumnado” suma las participaciones declaradas en las actuaciones; no equivale necesariamente a alumnado único.
             </p>
           </section>
+
+          {aiText && (
+            <section className="reportSection aiInterpretation">
+              <h2>Interpretación asistida por IA</h2>
+              <p className="preLine">{aiText}</p>
+              <p className="reportNote">
+                Texto generado a partir de indicadores agregados. Debe ser revisado por la coordinación antes de incorporarlo a una memoria oficial.
+              </p>
+            </section>
+          )}
 
           <section className="reportKpis">
             <div><strong>{summary.totals.validatedActions}</strong><span>actuaciones validadas</span></div>
