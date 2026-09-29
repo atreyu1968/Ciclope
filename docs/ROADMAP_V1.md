@@ -159,7 +159,7 @@
 - [x] Recordatorios automáticos de plazos.
 - [ ] Agenda priorizada de la hora semanal: qué hacer primero y por qué.
 - [ ] Marcar/posponer tareas desde el propio dashboard.
-- [ ] Resumen semanal automático para cada coordinador.
+- [x] Resumen semanal automático para cada coordinador.
 - [ ] Detección automática de redes/objetivos sin actividad reciente.
 - [ ] Vista calendario de tareas e hitos.
 
@@ -209,9 +209,9 @@
 - [x] Notificaciones del flujo de actuaciones.
 - [ ] Resumen semanal de coordinación.
 - [x] Aviso de tareas vencidas.
-- [ ] Aviso de hitos próximos.
+- [x] Aviso de hitos próximos.
 - [x] Aviso de comunicaciones sin respuesta tras el plazo.
-- [ ] Panel de estado de automatizaciones y últimos envíos.
+- [x] Panel de estado de automatizaciones y últimos envíos.
 
 ## 14. Administración y experiencia de usuario
 
