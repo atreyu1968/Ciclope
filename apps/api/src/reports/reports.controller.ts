@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Query, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { Roles } from '../auth/roles.decorator';
@@ -6,6 +6,8 @@ import { RolesGuard } from '../auth/roles.guard';
 import { SessionGuard } from '../auth/session.guard';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { ReportsService } from './reports.service';
+import { CreateReportSnapshotDto } from './dto/create-report-snapshot.dto';
+import { UpdateReportSnapshotStatusDto } from './dto/update-report-snapshot-status.dto';
 import { IntegrationsService } from '../integrations/integrations.service';
 
 const REPORT_ROLES = [
@@ -66,6 +68,40 @@ export class ReportsController {
     return mode === 'draft'
       ? this.integrations.draftReport(user.centerId, safeReport)
       : this.integrations.interpretReport(user.centerId, safeReport);
+  }
+
+  @Post('snapshots')
+  saveSnapshot(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CreateReportSnapshotDto,
+  ) {
+    return this.reports.saveSnapshot(user, dto);
+  }
+
+  @Get('snapshots')
+  snapshots(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('academicYearId') academicYearId?: string,
+    @Query('networkId') networkId?: string,
+  ) {
+    return this.reports.listSnapshots(user, academicYearId, networkId);
+  }
+
+  @Get('snapshots/:id')
+  snapshot(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.reports.snapshotDetail(user, id);
+  }
+
+  @Patch('snapshots/:id/status')
+  updateSnapshotStatus(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: UpdateReportSnapshotStatusDto,
+  ) {
+    return this.reports.updateSnapshotStatus(user, id, dto.status);
   }
 
   @Get('actions.csv')
