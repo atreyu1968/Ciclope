@@ -10,6 +10,7 @@ REPO_URL="https://github.com/atreyu1968/Ciclope.git"
 APP_ROOT="/opt/ciclope-fp"
 CONFIG_ROOT="/etc/ciclope-fp"
 DATA_ROOT="/var/lib/ciclope-fp"
+PUBLIC_URL="${CICLOPE_PUBLIC_URL:-http://localhost}"
 
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl git nginx postgresql postgresql-contrib build-essential openssl
@@ -58,7 +59,7 @@ PORT=4000
 WEB_PORT=3000
 NEXT_PUBLIC_API_URL=/api
 UPLOAD_DIR=$DATA_ROOT/uploads
-APP_BASE_URL=http://localhost
+APP_BASE_URL=$PUBLIC_URL
 APP_TIME_ZONE=Atlantic/Canary
 SESSION_SECRET=$SESSION_SECRET
 INTEGRATIONS_ENCRYPTION_KEY=$INTEGRATIONS_ENCRYPTION_KEY
