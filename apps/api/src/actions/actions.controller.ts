@@ -67,7 +67,24 @@ export class ActionsController {
     @Body() dto: ResubmitActionDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.actions.resubmit(id, dto, user);
+    return this.actions.resubmit(id, dto, user, true);
+  }
+
+  @Patch(':id')
+  updateBeforeValidation(
+    @Param('id') id: string,
+    @Body() dto: CreateActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.actions.resubmit(id, dto, user, false);
+  }
+
+  @Post(':id/duplicate')
+  duplicate(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.actions.duplicate(id, user);
   }
 
   @Patch(':id/validate')
