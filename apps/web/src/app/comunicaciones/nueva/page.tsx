@@ -28,6 +28,7 @@ export default function NewCommunicationPage() {
   const [aiDraft, setAiDraft] = useState('');
   const [aiError, setAiError] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
+  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -139,13 +140,33 @@ export default function NewCommunicationPage() {
       }),
     });
     const body = await response.json().catch(() => ({}));
-    setSending(false);
     if (!response.ok) {
+      setSending(false);
       setMessage(Array.isArray(body.message) ? body.message.join(' ') : body.message || 'No se pudo publicar.');
       return;
     }
-    setMessage(`Comunicación publicada para ${body._count?.recipients ?? 0} destinatarios.`);
+
+    let uploaded = 0;
+    let failed = 0;
+    for (const file of attachmentFiles) {
+      const attachment = new FormData();
+      attachment.append('file', file);
+      const uploadResponse = await fetch(`/api/communications/${body.id}/attachments`, {
+        method: 'POST',
+        body: attachment,
+      });
+      if (uploadResponse.ok) uploaded += 1;
+      else failed += 1;
+    }
+
+    setSending(false);
+    setMessage(
+      failed
+        ? `Comunicación publicada para ${body._count?.recipients ?? 0} destinatarios. Adjuntos: ${uploaded} subidos y ${failed} con error.`
+        : `Comunicación publicada para ${body._count?.recipients ?? 0} destinatarios${uploaded ? ` con ${uploaded} adjunto${uploaded === 1 ? '' : 's'}` : ''}.`,
+    );
     event.currentTarget.reset();
+    setAttachmentFiles([]);
     setSelectedFamilies([]);
     setAllFp(true);
     setMorning(false);
@@ -246,7 +267,35 @@ export default function NewCommunicationPage() {
         </fieldset>
 
         <fieldset>
-          <legend>3. Seguimiento</legend>
+          <legend>3. Adjuntos <span className="hint">(opcional)</span></legend>
+          <p className="hint">
+            Hasta 10 ficheros. Tamaño máximo por fichero: 15 MB. Se almacenan en CÍCLOPE y solo pueden descargarlos destinatarios y coordinaciones autorizadas.
+          </p>
+          <label>Ficheros
+            <input
+              type="file"
+              multiple
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.webp"
+              onChange={(event) => {
+                const files = Array.from(event.target.files || []).slice(0, 10);
+                setAttachmentFiles(files);
+              }}
+            />
+          </label>
+          {attachmentFiles.length > 0 && (
+            <div className="attachmentDraftList">
+              {attachmentFiles.map((file, index) => (
+                <div key={file.name + ':' + index}>
+                  <span>{file.name}</span>
+                  <small>{Math.max(1, Math.round(file.size / 1024))} KB</small>
+                </div>
+              ))}
+            </div>
+          )}
+        </fieldset>
+
+        <fieldset>
+          <legend>4. Seguimiento</legend>
           <label className="checkCard">
             <input type="checkbox" name="responseRequired" />
             <span>Solicitar respuesta</span>
