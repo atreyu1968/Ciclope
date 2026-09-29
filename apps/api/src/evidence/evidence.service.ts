@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { unlink } from 'node:fs/promises';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { PrismaService } from '../database/prisma.service';
@@ -71,6 +71,40 @@ export class EvidenceService {
       await unlink(file.path).catch(() => undefined);
       throw error;
     }
+  }
+
+
+  async remove(evidenceId: string, user: AuthenticatedUser) {
+    const evidence = await this.prisma.evidence.findUnique({
+      where: { id: evidenceId },
+      include: {
+        action: {
+          include: { academicYear: true, networks: true },
+        },
+      },
+    });
+
+    if (!evidence || evidence.action.academicYear.centerId !== user.centerId) {
+      throw new NotFoundException('Evidencia no encontrada.');
+    }
+    if (evidence.action.academicYearId !== user.academicYearId) {
+      throw new ForbiddenException('La evidencia pertenece a otro curso académico.');
+    }
+    if (['VALIDATED', 'ARCHIVED'].includes(evidence.action.status)) {
+      throw new BadRequestException('No se pueden eliminar evidencias de una actuación validada o archivada.');
+    }
+
+    const owner = evidence.action.submittedById === user.id;
+    if (!owner && !this.isGlobal(user)) {
+      throw new ForbiddenException('Solo el autor o la administración pueden eliminar esta evidencia.');
+    }
+
+    await this.prisma.evidence.delete({ where: { id: evidenceId } });
+    if (evidence.kind === 'FILE' && evidence.path) {
+      await unlink(evidence.path).catch(() => undefined);
+    }
+
+    return { success: true };
   }
 
   async fileForDownload(evidenceId: string, user: AuthenticatedUser) {
