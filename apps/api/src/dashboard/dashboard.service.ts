@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ActionStatus, CommunicationStatus, PlanTaskStatus, StaffRequestStatus } from '../generated/prisma/client';
+import { ActionStatus, CommunicationStatus, PlanTaskStatus, ReportSnapshotStatus, StaffRequestStatus } from '../generated/prisma/client';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { PrismaService } from '../database/prisma.service';
 
@@ -25,6 +25,7 @@ export class DashboardService {
         returnedOwnActions: 0,
         unreadCommunications: 0,
         communicationFollowups: 0,
+        savedReportSnapshots: 0,
         estimatedMinutes: 0,
         focus: [],
       };
@@ -46,6 +47,7 @@ export class DashboardService {
       openStaffRequests,
       returnedOwnActions,
       unreadCommunications,
+      savedReportSnapshots,
       communications,
     ] = await Promise.all([
       this.prisma.academicYear.findUnique({
@@ -143,6 +145,20 @@ export class DashboardService {
           },
         },
       }),
+      this.prisma.reportSnapshot.count({
+        where: {
+          academicYearId: user.academicYearId,
+          status: ReportSnapshotStatus.SAVED,
+          ...(global
+            ? {}
+            : {
+                OR: [
+                  { createdById: user.id },
+                  { networkId: { in: user.coordinatorNetworkIds } },
+                ],
+              }),
+        },
+      }),
       this.prisma.communication.findMany({
         where: {
           academicYearId: user.academicYearId,
@@ -178,6 +194,7 @@ export class DashboardService {
       overduePlanTasks * 2 +
       openStaffRequests * 3 +
       communicationFollowups * 2 +
+      savedReportSnapshots * 2 +
       returnedOwnActions * 2 +
       Math.min(unreadCommunications, 10);
 
@@ -218,6 +235,12 @@ export class DashboardService {
         title: `${communicationFollowups} comunicaciones con personas pendientes`,
         href: '/coordinacion/comunicaciones',
       }] : []),
+      ...(savedReportSnapshots ? [{
+        key: 'saved-reports',
+        priority: 'medium',
+        title: `${savedReportSnapshots} cortes de informe guardados pendientes de marcar como entregados`,
+        href: '/informes/historico',
+      }] : []),
       ...(returnedOwnActions ? [{
         key: 'returned-actions',
         priority: 'medium',
@@ -244,6 +267,7 @@ export class DashboardService {
       returnedOwnActions,
       unreadCommunications,
       communicationFollowups,
+      savedReportSnapshots,
       communicationItems: communicationItems.slice(0, 5),
       estimatedMinutes: Math.min(rawMinutes, 120),
       focus,
