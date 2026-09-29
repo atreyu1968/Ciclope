@@ -26,6 +26,7 @@ export default function ActionEvidencePage() {
   const [items, setItems] = useState<Evidence[]>([]);
   const [message, setMessage] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [addingLink, setAddingLink] = useState(false);
   const [workingId, setWorkingId] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -77,6 +78,7 @@ export default function ActionEvidencePage() {
 
   async function addLink(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setAddingLink(true);
     setMessage('');
     const form = new FormData(event.currentTarget);
     const response = await fetch(`/api/evidence/action/${params.id}/link`, {
@@ -89,12 +91,14 @@ export default function ActionEvidencePage() {
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
+      setAddingLink(false);
       setMessage(Array.isArray(body.message) ? body.message.join(' ') : body.message || 'No se pudo añadir el enlace.');
       return;
     }
     event.currentTarget.reset();
     setMessage('Enlace añadido.');
     await load();
+    setAddingLink(false);
   }
 
   async function removeEvidence(item: Evidence) {
@@ -147,14 +151,16 @@ export default function ActionEvidencePage() {
               />
             </label>
             <p className="hint">Máximo 25 MB. Imágenes, PDF, Office y vídeo MP4.</p>
-            <button className="primaryButton" disabled={uploading}>{uploading ? 'Subiendo…' : 'Añadir archivo'}</button>
+            <button className="primaryButton" disabled={uploading || addingLink || Boolean(workingId)}>{uploading ? 'Subiendo…' : 'Añadir archivo'}</button>
           </form>
 
           <h2 className="spacedHeading">Añadir enlace</h2>
           <form className="compactForm" onSubmit={addLink}>
             <label>Título<input name="title" placeholder="Opcional" /></label>
             <label>URL<input type="url" name="url" placeholder="https://…" required /></label>
-            <button className="secondaryButton">Añadir enlace</button>
+            <button className="secondaryButton" disabled={addingLink || uploading || Boolean(workingId)}>
+              {addingLink ? 'Añadiendo…' : 'Añadir enlace'}
+            </button>
           </form>
         </article>
 
