@@ -21,7 +21,7 @@ export class IntegrationsController {
 
   @Patch('resend')
   updateResend(@CurrentUser() user: AuthenticatedUser, @Body() dto: UpdateResendDto) {
-    return this.integrations.updateResend(user.centerId, dto);
+    return this.integrations.updateResend(user.centerId, dto, user.id);
   }
 
   @Post('resend/test')
@@ -31,7 +31,7 @@ export class IntegrationsController {
 
   @Patch('ai')
   updateAi(@CurrentUser() user: AuthenticatedUser, @Body() dto: UpdateAiDto) {
-    return this.integrations.updateAi(user.centerId, dto);
+    return this.integrations.updateAi(user.centerId, dto, user.id);
   }
 
   @Post('ai/test')
