@@ -160,7 +160,7 @@
 - [x] Agenda priorizada de la hora semanal: qué hacer primero y por qué.
 - [ ] Marcar/posponer tareas desde el propio dashboard.
 - [x] Resumen semanal automático para cada coordinador.
-- [ ] Detección automática de redes/objetivos sin actividad reciente.
+- [x] Detección automática de redes/objetivos sin actividad reciente.
 - [ ] Vista calendario de tareas e hitos.
 
 ## 11. Informes, indicadores y memoria
