@@ -27,6 +27,9 @@ export class DashboardService {
         communicationFollowups: 0,
         savedReportSnapshots: 0,
         estimatedMinutes: 0,
+        agendaMinutes: 0,
+        deferredPriorityCount: 0,
+        agenda: [],
         focus: [],
       };
     }
@@ -204,56 +207,87 @@ export class DashboardService {
         priority: 'high',
         title: `${openStaffRequests} consultas o propuestas del claustro abiertas`,
         href: '/coordinacion/buzon',
+        estimatedMinutes: Math.min(15, Math.max(5, openStaffRequests * 3)),
+        reason: 'Las consultas del claustro pueden bloquear trabajo de otras personas y conviene responderlas al comienzo de la sesión.',
       }] : []),
       ...(pendingActions ? [{
         key: 'pending-actions',
         priority: 'high',
         title: `${pendingActions} actuaciones pendientes de validar`,
         href: '/coordinacion/actuaciones',
+        estimatedMinutes: Math.min(20, Math.max(5, pendingActions)),
+        reason: 'Validar actuaciones consolida los datos de las redes y evita que se acumulen registros pendientes.',
       }] : []),
       ...(overduePlanTasks ? [{
         key: 'overdue-plan-tasks',
         priority: 'high',
         title: `${overduePlanTasks} tareas del plan anual fuera de plazo`,
         href: '/coordinacion/planes',
+        estimatedMinutes: Math.min(15, Math.max(5, overduePlanTasks * 2)),
+        reason: 'Hay compromisos del plan anual fuera de plazo; resolverlos reduce el riesgo de incumplir hitos de coordinación.',
       }] : []),
       ...(nextPlanDeadline?.dueDate ? [{
         key: 'next-plan-deadline',
         priority: nextPlanDeadline.official ? 'medium' : 'low',
         title: `${nextPlanDeadline.official ? 'Hito oficial' : 'Próxima tarea'}: ${nextPlanDeadline.title} · ${nextPlanDeadline.dueDate.toLocaleDateString('es-ES', { timeZone: 'Atlantic/Canary' })}`,
         href: '/coordinacion/planes',
+        estimatedMinutes: 5,
+        reason: 'Es la fecha más próxima del plan y revisarla ahora permite anticipar trabajo antes de que venza.',
       }] : []),
       ...(validatedWithoutEvidence ? [{
         key: 'missing-evidence',
         priority: 'medium',
         title: `${validatedWithoutEvidence} actuaciones validadas sin evidencia`,
         href: '/informes',
+        estimatedMinutes: Math.min(10, Math.max(4, validatedWithoutEvidence)),
+        reason: 'Las actuaciones sin evidencia debilitan la trazabilidad y la memoria final de las redes.',
       }] : []),
       ...(communicationFollowups ? [{
         key: 'communications-followup',
         priority: 'medium',
         title: `${communicationFollowups} comunicaciones con personas pendientes`,
         href: '/coordinacion/comunicaciones',
+        estimatedMinutes: Math.min(10, Math.max(4, communicationFollowups * 2)),
+        reason: 'Existen comunicaciones publicadas con lecturas o respuestas todavía pendientes.',
       }] : []),
       ...(savedReportSnapshots ? [{
         key: 'saved-reports',
         priority: 'medium',
         title: `${savedReportSnapshots} cortes de informe guardados pendientes de marcar como entregados`,
         href: '/informes/historico',
+        estimatedMinutes: Math.min(10, Math.max(4, savedReportSnapshots * 2)),
+        reason: 'Los cortes ya guardados deben revisarse o marcarse como presentados para cerrar correctamente el seguimiento.',
       }] : []),
       ...(returnedOwnActions ? [{
         key: 'returned-actions',
         priority: 'medium',
         title: `${returnedOwnActions} actuaciones tuyas devueltas para corrección`,
         href: '/actuaciones/mis-actuaciones',
+        estimatedMinutes: Math.min(10, Math.max(4, returnedOwnActions * 2)),
+        reason: 'Estas actuaciones necesitan corrección para volver al circuito de validación y no quedar fuera de los indicadores.',
       }] : []),
       ...(unreadCommunications ? [{
         key: 'unread-communications',
         priority: 'low',
         title: `${unreadCommunications} comunicaciones sin leer`,
         href: '/comunicaciones',
+        estimatedMinutes: Math.min(10, Math.max(3, unreadCommunications)),
+        reason: 'Revisar los mensajes sin leer evita perder avisos o solicitudes que afecten a la coordinación.',
       }] : []),
     ];
+
+    let agendaMinutes = 0;
+    const agenda = focus.flatMap((item, index) => {
+      if (agendaMinutes >= 60) return [];
+      const allocatedMinutes = Math.min(item.estimatedMinutes, 60 - agendaMinutes);
+      agendaMinutes += allocatedMinutes;
+      return [{
+        ...item,
+        order: index + 1,
+        allocatedMinutes,
+      }];
+    });
+    const deferredPriorityCount = Math.max(0, focus.length - agenda.length);
 
     return {
       activeYear: year,
@@ -270,6 +304,9 @@ export class DashboardService {
       savedReportSnapshots,
       communicationItems: communicationItems.slice(0, 5),
       estimatedMinutes: Math.min(rawMinutes, 120),
+      agendaMinutes,
+      deferredPriorityCount,
+      agenda,
       focus,
     };
   }
