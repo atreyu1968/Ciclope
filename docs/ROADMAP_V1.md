@@ -138,7 +138,7 @@
 - [x] Correo de prueba.
 - [x] Cola de correo con reintentos.
 - [x] Deduplicación de envíos.
-- [ ] Plantillas institucionales HTML para correo.
+- [x] Plantillas institucionales HTML para correo.
 - [x] Vista de entregas/fallos de correo para coordinación.
 - [x] Reenvío manual de mensajes fallidos.
 - [ ] Adjuntos en comunicaciones cuando sean necesarios.
