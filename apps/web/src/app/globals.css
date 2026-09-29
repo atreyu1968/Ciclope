@@ -88,3 +88,7 @@
 
 
 .preferenceList{display:grid;gap:10px;margin:16px 0}.preferenceList .checkCard span{display:grid;gap:3px}.preferenceList .checkCard small{color:var(--muted);font-weight:500;line-height:1.4}.preferenceList .checkCard:has(input:disabled){opacity:.6}
+
+
+.attachmentDraftList,.communicationAttachments>div{display:grid;gap:8px}.attachmentDraftList{margin-top:10px}.attachmentDraftList>div,.attachmentLink{display:flex;justify-content:space-between;gap:16px;align-items:center;border:1px solid var(--line);border-radius:9px;padding:9px 11px;background:#f8fafc}.attachmentDraftList span,.attachmentLink span{overflow-wrap:anywhere}.attachmentDraftList small,.attachmentLink small{color:var(--muted);white-space:nowrap}.communicationAttachments{display:grid;gap:8px;margin-top:14px}.communicationAttachments>strong{font-size:.88rem}.attachmentLink{color:var(--institutional);font-weight:650}.attachmentLink:hover{border-color:var(--institutional-2);background:#eef5fa}
+@media(max-width:640px){.attachmentDraftList>div,.attachmentLink{align-items:flex-start}.attachmentLink small,.attachmentDraftList small{white-space:normal;text-align:right}}
