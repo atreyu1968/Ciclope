@@ -496,4 +496,35 @@ export class PlansService implements OnModuleInit {
       },
     });
   }
+
+  async postponeTask(user: AuthenticatedUser, taskId: string, days: number) {
+    const task = await this.prisma.planTask.findUnique({
+      where: { id: taskId },
+      include: {
+        plan: {
+          include: { academicYear: true },
+        },
+      },
+    });
+    if (!task) throw new NotFoundException('Tarea no encontrada.');
+    await this.assertCanManagePlan(user, task.planId);
+
+    if (task.official) {
+      throw new BadRequestException('Los hitos oficiales no pueden posponerse desde el panel.');
+    }
+    if ([PlanTaskStatus.DONE, PlanTaskStatus.CANCELLED].includes(task.status)) {
+      throw new BadRequestException('Solo se pueden posponer tareas abiertas.');
+    }
+
+    const baseDate = task.dueDate && task.dueDate > new Date() ? task.dueDate : new Date();
+    const postponedDate = new Date(baseDate.getTime() + days * 24 * 60 * 60_000);
+    if (postponedDate > task.plan.academicYear.endsAt) {
+      throw new BadRequestException('La nueva fecha quedaría fuera del curso académico.');
+    }
+
+    return this.prisma.planTask.update({
+      where: { id: taskId },
+      data: { dueDate: postponedDate },
+    });
+  }
 }
