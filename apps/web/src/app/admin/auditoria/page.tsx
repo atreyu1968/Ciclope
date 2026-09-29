@@ -33,6 +33,7 @@ export default function AuditPage() {
   const router = useRouter();
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch('/api/audit').then(async (response) => {
@@ -46,7 +47,8 @@ export default function AuditPage() {
         return;
       }
       setEntries(body);
-    }).catch(() => setError('No se pudo cargar el registro de auditoría.'));
+    }).catch(() => setError('No se pudo cargar el registro de auditoría.'))
+      .finally(() => setLoading(false));
   }, [router]);
 
   return (
@@ -63,6 +65,12 @@ export default function AuditPage() {
       </div>
 
       {error && <div className="errorBox">{error}</div>}
+      {loading && !error && (
+        <div className="loadingState" role="status" aria-live="polite">
+          <span className="loadingSpinner" aria-hidden="true" />
+          <strong>Cargando registro de auditoría…</strong>
+        </div>
+      )}
 
       <section className="panel">
         <div className="panelHeader">
@@ -73,8 +81,11 @@ export default function AuditPage() {
         </div>
 
         <div className="assignmentList">
-          {entries.length === 0 && !error && (
-            <p className="hint">Todavía no existen operaciones auditadas.</p>
+          {entries.length === 0 && !error && !loading && (
+            <div className="emptyState">
+              <h3>Todavía no existen operaciones auditadas</h3>
+              <p>Las operaciones sensibles aparecerán aquí automáticamente cuando se produzcan.</p>
+            </div>
           )}
           {entries.map((entry) => (
             <div className="assignmentRow" key={entry.id}>
