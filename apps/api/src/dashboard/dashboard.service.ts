@@ -20,6 +20,7 @@ export class DashboardService {
         pendingActions: 0,
         validatedWithoutEvidence: 0,
         overduePlanTasks: 0,
+        nextPlanDeadline: null,
         openStaffRequests: 0,
         returnedOwnActions: 0,
         unreadCommunications: 0,
@@ -41,6 +42,7 @@ export class DashboardService {
       pendingActionItems,
       validatedWithoutEvidence,
       overduePlanTasks,
+      nextPlanDeadline,
       openStaffRequests,
       returnedOwnActions,
       unreadCommunications,
@@ -95,6 +97,27 @@ export class DashboardService {
             ...(global ? {} : { networkId: { in: user.coordinatorNetworkIds } }),
           },
         },
+      }),
+      this.prisma.planTask.findFirst({
+        where: {
+          dueDate: {
+            gte: new Date(),
+            lte: new Date(Date.now() + 30 * 24 * 60 * 60_000),
+          },
+          status: { in: [PlanTaskStatus.TODO, PlanTaskStatus.IN_PROGRESS] },
+          plan: {
+            academicYearId: user.academicYearId,
+            ...(global ? {} : { networkId: { in: user.coordinatorNetworkIds } }),
+          },
+        },
+        select: {
+          id: true,
+          title: true,
+          dueDate: true,
+          official: true,
+          plan: { select: { network: { select: { name: true } } } },
+        },
+        orderBy: { dueDate: 'asc' },
       }),
       this.prisma.staffRequest.count({
         where: {
@@ -177,6 +200,12 @@ export class DashboardService {
         title: `${overduePlanTasks} tareas del plan anual fuera de plazo`,
         href: '/coordinacion/planes',
       }] : []),
+      ...(nextPlanDeadline?.dueDate ? [{
+        key: 'next-plan-deadline',
+        priority: nextPlanDeadline.official ? 'medium' : 'low',
+        title: `${nextPlanDeadline.official ? 'Hito oficial' : 'Próxima tarea'}: ${nextPlanDeadline.title} · ${nextPlanDeadline.dueDate.toLocaleDateString('es-ES', { timeZone: 'Atlantic/Canary' })}`,
+        href: '/coordinacion/planes',
+      }] : []),
       ...(validatedWithoutEvidence ? [{
         key: 'missing-evidence',
         priority: 'medium',
@@ -210,6 +239,7 @@ export class DashboardService {
       pendingActionItems,
       validatedWithoutEvidence,
       overduePlanTasks,
+      nextPlanDeadline,
       openStaffRequests,
       returnedOwnActions,
       unreadCommunications,
