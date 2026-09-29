@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { createHash, randomBytes } from 'node:crypto';
+import type { AuthenticatedUser } from './auth.types';
 import { PrismaService } from '../database/prisma.service';
 
 type LoginAttempt = {
@@ -288,6 +289,38 @@ export class AuthService {
     });
 
     return { success: true };
+  }
+
+  async updateNotificationPreferences(
+    user: AuthenticatedUser,
+    preferences: {
+      emailNotifications: boolean;
+      reminderEmails: boolean;
+      weeklySummaryEmail: boolean;
+    },
+  ) {
+    const updated = await this.prisma.user.update({
+      where: { id: user.id },
+      data: preferences,
+      select: {
+        emailNotifications: true,
+        reminderEmails: true,
+        weeklySummaryEmail: true,
+      },
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        centerId: user.centerId,
+        actorId: user.id,
+        action: 'NOTIFICATION_PREFERENCES_UPDATED',
+        entityType: 'User',
+        entityId: user.id,
+        details: updated,
+      },
+    });
+
+    return updated;
   }
 
   cookie(token: string, expiresAt: Date) {
