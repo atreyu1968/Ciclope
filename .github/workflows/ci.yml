@@ -31,6 +31,8 @@ jobs:
           node-version: 24.21.0
       - name: Install dependencies
         run: npm install
+      - name: Audit dependency tree (diagnostic)
+        run: npm audit || true
       - name: Generate Prisma client
         run: npm run db:generate
       - name: Validate Prisma schema
