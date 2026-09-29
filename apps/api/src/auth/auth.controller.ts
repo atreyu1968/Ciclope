@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Patch, Post, Req, Res, UseGuards } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { CurrentUser } from './current-user.decorator';
@@ -6,6 +6,7 @@ import { LoginDto } from './dto/login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { RequestPasswordResetDto } from './dto/request-password-reset.dto';
 import { ConfirmPasswordResetDto } from './dto/confirm-password-reset.dto';
+import { UpdateNotificationPreferencesDto } from './dto/update-notification-preferences.dto';
 import { SessionGuard } from './session.guard';
 import type { AuthenticatedUser } from './auth.types';
 
@@ -63,6 +64,15 @@ export class AuthController {
   @Post('password-reset/confirm')
   confirmPasswordReset(@Body() dto: ConfirmPasswordResetDto) {
     return this.auth.confirmPasswordReset(dto.token, dto.newPassword);
+  }
+
+  @UseGuards(SessionGuard)
+  @Patch('notification-preferences')
+  updateNotificationPreferences(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdateNotificationPreferencesDto,
+  ) {
+    return this.auth.updateNotificationPreferences(user, dto);
   }
 
   @Post('logout')
