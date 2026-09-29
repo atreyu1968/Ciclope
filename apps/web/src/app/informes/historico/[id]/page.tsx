@@ -154,7 +154,7 @@ export default function HistoricalReportDetailPage() {
   if (error) {
     return (
       <main className="shell">
-        <div className="errorBox">{error}</div>
+        <div className="errorBox" role="alert">{error}</div>
         <a className="secondaryButton" href="/informes/historico">Volver al histórico</a>
       </main>
     );
