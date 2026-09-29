@@ -64,7 +64,7 @@ export default function AuditPage() {
         <a className="secondaryButton" href="/admin">Administración</a>
       </div>
 
-      {error && <div className="errorBox">{error}</div>}
+      {error && <div className="errorBox" role="alert">{error}</div>}
       {loading && !error && (
         <div className="loadingState" role="status" aria-live="polite">
           <span className="loadingSpinner" aria-hidden="true" />
