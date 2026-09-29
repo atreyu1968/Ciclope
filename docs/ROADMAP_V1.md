@@ -194,12 +194,12 @@
 - [x] Prueba de conexión.
 - [x] Interpretación de informes.
 - [x] Redacción de memoria.
-- [ ] Asistente para redactar comunicaciones.
-- [ ] Asistente para resumir el buzón y detectar asuntos pendientes.
-- [ ] Asistente para proponer borradores de objetivos/tareas a partir del plan.
-- [ ] Registro de cuándo se usó IA y sobre qué función.
-- [ ] Límites de tamaño y manejo robusto de timeouts/errores.
-- [ ] Aviso visible de que el texto generado requiere revisión humana.
+- [x] Asistente para redactar comunicaciones.
+- [x] Asistente para resumir el buzón y detectar asuntos pendientes.
+- [x] Asistente para proponer borradores de objetivos/tareas a partir del plan.
+- [x] Registro de cuándo se usó IA y sobre qué función.
+- [x] Límites de tamaño y manejo robusto de timeouts/errores.
+- [x] Aviso visible de que el texto generado requiere revisión humana.
 
 ## 13. Automatizaciones
 
