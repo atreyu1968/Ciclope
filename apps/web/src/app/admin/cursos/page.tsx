@@ -217,13 +217,39 @@ export default function AcademicYearsPage() {
   }
 
   async function removeNetwork(id: string) {
+    const assignment = year?.networkCoordinators.find((item) => item.id === id);
+    const label = assignment
+      ? `${assignment.network.name} de ${assignment.user.firstName} ${assignment.user.lastName}`
+      : 'esta coordinación';
+    if (!window.confirm(`¿Quitar ${label}? El histórico del curso se conservará, pero la persona perderá esta responsabilidad activa.`)) return;
+    setWorking(true);
     const response = await fetch(`/api/academic-years/network-coordinators/${id}`, { method: 'DELETE' });
-    if (response.ok) await load();
+    setWorking(false);
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      setError(messageFrom(body, 'No se pudo quitar la coordinación.'));
+      return;
+    }
+    setMessage('Coordinación retirada.');
+    await load();
   }
 
   async function removeCiclope(id: string) {
+    const assignment = year?.ciclopeCoordinators.find((item) => item.id === id);
+    const label = assignment
+      ? `${assignment.user.firstName} ${assignment.user.lastName}`
+      : 'la persona seleccionada';
+    if (!window.confirm(`¿Quitar la coordinación CÍCLOPE de ${label}? El histórico del curso se conservará.`)) return;
+    setWorking(true);
     const response = await fetch(`/api/academic-years/ciclope-coordinators/${id}`, { method: 'DELETE' });
-    if (response.ok) await load();
+    setWorking(false);
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      setError(messageFrom(body, 'No se pudo quitar la coordinación CÍCLOPE.'));
+      return;
+    }
+    setMessage('Coordinación CÍCLOPE retirada.');
+    await load();
   }
 
   return (
@@ -338,7 +364,7 @@ export default function AcademicYearsPage() {
                 </div>
                 <div className="rowActions">
                   {assignment.isPrimary && <span className="badge success">Principal</span>}
-                  {!year.closedAt && <button className="textButton dangerText" onClick={() => void removeNetwork(assignment.id)}>Quitar</button>}
+                  {!year.closedAt && <button className="textButton dangerText" disabled={working} onClick={() => void removeNetwork(assignment.id)}>Quitar</button>}
                 </div>
               </div>
             ))}
@@ -356,7 +382,7 @@ export default function AcademicYearsPage() {
                 </div>
                 <div className="rowActions">
                   {assignment.isPrimary && <span className="badge success">Principal</span>}
-                  {!year.closedAt && <button className="textButton dangerText" onClick={() => void removeCiclope(assignment.id)}>Quitar</button>}
+                  {!year.closedAt && <button className="textButton dangerText" disabled={working} onClick={() => void removeCiclope(assignment.id)}>Quitar</button>}
                 </div>
               </div>
             ))}
