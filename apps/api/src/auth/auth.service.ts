@@ -18,6 +18,7 @@ type LoginAttempt = {
 @Injectable()
 export class AuthService {
   private readonly loginAttempts = new Map<string, LoginAttempt>();
+  private readonly passwordResetAttempts = new Map<string, { count: number; windowStartedAt: number }>();
   private readonly loginWindowMs = 15 * 60 * 1000;
   private readonly loginMaxFailures = 5;
 
@@ -144,7 +145,29 @@ export class AuthService {
     return this.createSession(user.id);
   }
 
-  async requestPasswordReset(email: string) {
+  private registerPasswordResetAttempt(email: string, clientKey?: string) {
+    const key = this.rateKey(email, clientKey);
+    const now = Date.now();
+    const current = this.passwordResetAttempts.get(key);
+
+    if (!current || now - current.windowStartedAt > this.loginWindowMs) {
+      this.passwordResetAttempts.set(key, { count: 1, windowStartedAt: now });
+      return;
+    }
+
+    if (current.count >= 5) {
+      throw new HttpException(
+        'Demasiadas solicitudes de recuperación. Inténtalo de nuevo más tarde.',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    current.count += 1;
+    this.passwordResetAttempts.set(key, current);
+  }
+
+  async requestPasswordReset(email: string, clientKey?: string) {
+    this.registerPasswordResetAttempt(email, clientKey);
     const normalized = email.toLowerCase().trim();
     const user = await this.prisma.user.findFirst({
       where: { email: normalized, active: true },
