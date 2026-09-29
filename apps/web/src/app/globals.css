@@ -34,3 +34,5 @@
 .networkDetailGrid{display:grid;gap:14px}.networkDetailCard{border:1px solid var(--line);border-radius:12px;padding:16px;background:#f9fbfc;display:grid;gap:12px}.networkDetailCard h3{margin:0;color:var(--institutional);font-size:1rem}.networkDetailCard label{gap:6px}.networkDetailCard .hint{font-weight:500;line-height:1.45}
 .insightGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.insightField{border:1px solid var(--line);border-radius:11px;padding:13px;display:grid;gap:9px}.insightField>strong{font-size:.9rem}.insightValues{display:flex;flex-wrap:wrap;gap:7px}.insightValues span{background:#eef5fa;color:var(--institutional);border-radius:999px;padding:6px 9px;font-size:.8rem}
 .aiInterpretation{background:#f7fafc;border:1px solid #d8e3ed;border-radius:14px;padding:20px}
+
+.warningChip{background:#fff4e5!important;color:#805715!important}.validationDetails{margin-top:12px;padding:12px 14px;border-left:3px solid #cddfea;background:#f8fafc;border-radius:8px;display:grid;gap:8px}.validationDetails>strong{font-size:.86rem;color:var(--institutional)}
