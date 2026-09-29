@@ -304,7 +304,7 @@ export class ActionsService {
     if (requireReturned && current.status !== ActionStatus.RETURNED) {
       throw new BadRequestException('Solo pueden reenviarse actuaciones devueltas para corrección.');
     }
-    if (!requireReturned && ![ActionStatus.DRAFT, ActionStatus.PENDING_VALIDATION].includes(current.status)) {
+    if (!requireReturned && current.status !== ActionStatus.DRAFT && current.status !== ActionStatus.PENDING_VALIDATION) {
       throw new BadRequestException('Solo pueden editarse actuaciones que aún no han sido validadas.');
     }
 
