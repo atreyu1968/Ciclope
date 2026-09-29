@@ -77,6 +77,11 @@ enum PlanMetric {
   EVIDENCE
 }
 
+enum ReportSnapshotStatus {
+  SAVED
+  SUBMITTED
+}
+
 model Center {
   id                   String               @id @default(cuid())
   name                 String
@@ -102,6 +107,7 @@ model AcademicYear {
   staffRequests        StaffRequest[]
   annualPlans          AnnualPlan[]
   milestones           AcademicYearMilestone[]
+  reportSnapshots      ReportSnapshot[]
   groups               TeachingGroup[]
   networkCoordinators NetworkCoordinator[]
   ciclopeCoordinators CiclopeCoordinator[]
@@ -136,6 +142,7 @@ model User {
   submittedStaffRequests  StaffRequest[]            @relation("StaffRequestSubmitter")
   requestMessages         StaffRequestMessage[]
   planTasks               PlanTask[]
+  reportSnapshots         ReportSnapshot[]
   createdAt               DateTime                  @default(now())
   updatedAt               DateTime                  @updatedAt
 
@@ -229,6 +236,7 @@ model Network {
   communications Communication[]
   staffRequests  StaffRequestNetwork[]
   annualPlans    AnnualPlan[]
+  reportSnapshots ReportSnapshot[]
   createdAt      DateTime              @default(now())
   updatedAt      DateTime              @updatedAt
 }
@@ -539,4 +547,28 @@ model AcademicYearMilestone {
 
   @@unique([academicYearId, title, dueDate])
   @@index([academicYearId, dueDate])
+}
+
+
+model ReportSnapshot {
+  id             String               @id @default(cuid())
+  academicYearId String
+  networkId      String?
+  createdById    String?
+  title          String
+  periodStart    DateTime
+  periodEnd      DateTime
+  status         ReportSnapshotStatus @default(SAVED)
+  data           Json
+  narrative      String?
+  submittedAt    DateTime?
+  academicYear   AcademicYear         @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  network        Network?             @relation(fields: [networkId], references: [id], onDelete: SetNull)
+  createdBy      User?                @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  @@index([academicYearId, networkId, periodEnd])
+  @@index([createdById, createdAt])
+  @@index([status, submittedAt])
 }
