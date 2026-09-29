@@ -21,6 +21,7 @@ export class DashboardService {
         validatedWithoutEvidence: 0,
         overduePlanTasks: 0,
         nextPlanDeadline: null,
+        priorityPlanTasks: [],
         openStaffRequests: 0,
         returnedOwnActions: 0,
         unreadCommunications: 0,
@@ -49,6 +50,7 @@ export class DashboardService {
       validatedWithoutEvidence,
       overduePlanTasks,
       nextPlanDeadline,
+      priorityPlanTasks,
       openStaffRequests,
       returnedOwnActions,
       unreadCommunications,
@@ -127,6 +129,25 @@ export class DashboardService {
           plan: { select: { network: { select: { name: true } } } },
         },
         orderBy: { dueDate: 'asc' },
+      }),
+      this.prisma.planTask.findMany({
+        where: {
+          status: { in: [PlanTaskStatus.TODO, PlanTaskStatus.IN_PROGRESS] },
+          plan: {
+            academicYearId: user.academicYearId,
+            ...(global ? {} : { networkId: { in: user.coordinatorNetworkIds } }),
+          },
+        },
+        select: {
+          id: true,
+          title: true,
+          dueDate: true,
+          official: true,
+          status: true,
+          plan: { select: { network: { select: { id: true, name: true } } } },
+        },
+        orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
+        take: 6,
       }),
       this.prisma.staffRequest.count({
         where: {
@@ -376,6 +397,7 @@ export class DashboardService {
       validatedWithoutEvidence,
       overduePlanTasks,
       nextPlanDeadline,
+      priorityPlanTasks,
       openStaffRequests,
       returnedOwnActions,
       unreadCommunications,
