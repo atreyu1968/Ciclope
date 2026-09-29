@@ -100,6 +100,7 @@ export default function AnnualPlansPage() {
   const [aiPlanDraft, setAiPlanDraft] = useState('');
   const [aiPlanError, setAiPlanError] = useState('');
   const [aiPlanBusy, setAiPlanBusy] = useState(false);
+  const [operation, setOperation] = useState('');
 
   async function refreshPlans(preferredId?: string) {
     const response = await fetch('/api/plans');
@@ -232,6 +233,7 @@ export default function AnnualPlansPage() {
 
   async function createPlan(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setOperation('create-plan');
     setMessage('');
     setError('');
     const form = event.currentTarget;
@@ -247,16 +249,19 @@ export default function AnnualPlansPage() {
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
+      setOperation('');
       setError(messageFrom(body, 'No se pudo crear el plan.'));
       return;
     }
     form.reset();
     setMessage('Plan anual creado.');
     await refreshPlans(body.id);
+    setOperation('');
   }
 
   async function createCommonMilestone(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setOperation('create-milestone');
     setMessage('');
     setError('');
     const form = event.currentTarget;
@@ -272,6 +277,7 @@ export default function AnnualPlansPage() {
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
+      setOperation('');
       setError(messageFrom(body, 'No se pudo crear el hito común.'));
       return;
     }
@@ -284,10 +290,13 @@ export default function AnnualPlansPage() {
       setSelectedId('');
       queueMicrotask(() => setSelectedId(idToReload));
     }
+    setOperation('');
   }
 
   async function updatePlanStatus(status: string) {
     if (!detail) return;
+    setOperation('plan-status');
+    setError('');
     const response = await fetch('/api/plans/' + detail.id + '/status', {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
@@ -295,16 +304,19 @@ export default function AnnualPlansPage() {
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
+      setOperation('');
       setError(messageFrom(body, 'No se pudo cambiar el estado del plan.'));
       return;
     }
     setMessage('Estado del plan actualizado.');
     await refreshPlans(detail.id);
+    setOperation('');
   }
 
   async function createObjective(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!detail) return;
+    setOperation('create-objective');
     setMessage('');
     setError('');
     const form = event.currentTarget;
@@ -323,6 +335,7 @@ export default function AnnualPlansPage() {
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
+      setOperation('');
       setError(messageFrom(body, 'No se pudo crear el objetivo.'));
       return;
     }
@@ -331,9 +344,12 @@ export default function AnnualPlansPage() {
     setSelectedId('');
     queueMicrotask(() => setSelectedId(detail.id));
     await refreshPlans(detail.id);
+    setOperation('');
   }
 
   async function updateObjectiveStatus(id: string, status: string) {
+    setOperation('objective:' + id);
+    setError('');
     const response = await fetch('/api/plans/objective/' + id + '/status', {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
@@ -341,6 +357,7 @@ export default function AnnualPlansPage() {
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
+      setOperation('');
       setError(messageFrom(body, 'No se pudo actualizar el objetivo.'));
       return;
     }
@@ -349,11 +366,13 @@ export default function AnnualPlansPage() {
       setSelectedId('');
       queueMicrotask(() => setSelectedId(idToReload));
     }
+    setOperation('');
   }
 
   async function createTask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!detail) return;
+    setOperation('create-task');
     setMessage('');
     setError('');
     const form = event.currentTarget;
@@ -371,6 +390,7 @@ export default function AnnualPlansPage() {
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
+      setOperation('');
       setError(messageFrom(body, 'No se pudo crear la tarea.'));
       return;
     }
@@ -380,9 +400,12 @@ export default function AnnualPlansPage() {
     setSelectedId('');
     queueMicrotask(() => setSelectedId(idToReload));
     await refreshPlans(idToReload);
+    setOperation('');
   }
 
   async function updateTaskStatus(id: string, status: string) {
+    setOperation('task:' + id);
+    setError('');
     const response = await fetch('/api/plans/task/' + id + '/status', {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
@@ -390,6 +413,7 @@ export default function AnnualPlansPage() {
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
+      setOperation('');
       setError(messageFrom(body, 'No se pudo actualizar la tarea.'));
       return;
     }
@@ -398,6 +422,7 @@ export default function AnnualPlansPage() {
       setSelectedId('');
       queueMicrotask(() => setSelectedId(idToReload));
     }
+    setOperation('');
   }
 
   return (
@@ -431,6 +456,7 @@ export default function AnnualPlansPage() {
                 type="button"
                 className={'planRow ' + (selectedId === plan.id ? 'selected' : '')}
                 key={plan.id}
+                disabled={Boolean(operation)}
                 onClick={() => setSelectedId(plan.id)}
               >
                 <span><strong>{plan.network.name}</strong><small>{plan.title}</small></span>
@@ -456,7 +482,9 @@ export default function AnnualPlansPage() {
               </label>
               <label>Título<input name="title" placeholder="Opcional: se genera automáticamente" /></label>
               <label>Resumen<textarea name="summary" rows={4} placeholder="Prioridades y alcance del plan" /></label>
-              <button className="primaryButton">Crear plan anual</button>
+              <button className="primaryButton" disabled={Boolean(operation)}>
+                {operation === 'create-plan' ? 'Creando plan…' : 'Crear plan anual'}
+              </button>
             </form>
           )}
 
@@ -481,7 +509,9 @@ export default function AnnualPlansPage() {
               <label>Título<input name="title" required maxLength={240} placeholder="Ej.: Entregar informe del primer trimestre" /></label>
               <label>Fecha límite<input name="dueDate" type="date" required /></label>
               <label>Descripción<textarea name="description" rows={3} /></label>
-              <button className="secondaryButton">Distribuir a todas las redes</button>
+              <button className="secondaryButton" disabled={Boolean(operation)}>
+                {operation === 'create-milestone' ? 'Distribuyendo…' : 'Distribuir a todas las redes'}
+              </button>
             </form>
           )}
         </aside>
@@ -510,7 +540,7 @@ export default function AnnualPlansPage() {
                     {detail.summary && <p className="lead preLine">{detail.summary}</p>}
                   </div>
                   <label className="statusControl">Estado
-                    <select value={detail.status} onChange={(event) => void updatePlanStatus(event.target.value)}>
+                    <select value={detail.status} disabled={Boolean(operation)} aria-busy={operation === 'plan-status'} onChange={(event) => void updatePlanStatus(event.target.value)}>
                       <option value="DRAFT">Borrador</option>
                       <option value="ACTIVE">Activo</option>
                       <option value="CLOSED">Cerrado</option>
@@ -560,7 +590,7 @@ export default function AnnualPlansPage() {
                 <p className="hint">
                   La propuesta se genera a partir del plan actual y evita, en lo posible, duplicar lo que ya existe. No se modifica ningún dato automáticamente.
                 </p>
-                <button className="secondaryButton" type="button" disabled={aiPlanBusy} onClick={() => void proposePlanWork()}>
+                <button className="secondaryButton" type="button" disabled={aiPlanBusy || Boolean(operation)} onClick={() => void proposePlanWork()}>
                   {aiPlanBusy ? 'Analizando el plan…' : 'Generar propuestas'}
                 </button>
                 {aiPlanError && <div className="errorBox">{aiPlanError}</div>}
@@ -587,7 +617,7 @@ export default function AnnualPlansPage() {
                           <strong>{objective.title}</strong>
                           {objective.description && <p className="hint preLine">{objective.description}</p>}
                         </div>
-                        <select value={objective.status} onChange={(event) => void updateObjectiveStatus(objective.id, event.target.value)}>
+                        <select value={objective.status} disabled={Boolean(operation)} aria-busy={operation === 'objective:' + objective.id} onChange={(event) => void updateObjectiveStatus(objective.id, event.target.value)}>
                           <option value="PLANNED">Planificado</option>
                           <option value="IN_PROGRESS">En curso</option>
                           <option value="COMPLETED">Completado</option>
@@ -634,7 +664,9 @@ export default function AnnualPlansPage() {
                     </label>
                     <label>Meta<input name="targetValue" type="number" min="0" step="0.1" placeholder="Solo si eliges métrica" /></label>
                   </div>
-                  <button className="secondaryButton">Añadir objetivo</button>
+                  <button className="secondaryButton" disabled={Boolean(operation)}>
+                    {operation === 'create-objective' ? 'Añadiendo…' : 'Añadir objetivo'}
+                  </button>
                 </form>
               </article>
 
@@ -659,7 +691,7 @@ export default function AnnualPlansPage() {
                             {task.dueDate ? ' · ' + new Date(task.dueDate).toLocaleDateString('es-ES') : ''}
                           </span>
                         </div>
-                        <select value={task.status} onChange={(event) => void updateTaskStatus(task.id, event.target.value)}>
+                        <select value={task.status} disabled={Boolean(operation)} aria-busy={operation === 'task:' + task.id} onChange={(event) => void updateTaskStatus(task.id, event.target.value)}>
                           <option value="TODO">Pendiente</option>
                           <option value="IN_PROGRESS">En curso</option>
                           <option value="DONE">Hecha</option>
@@ -668,7 +700,12 @@ export default function AnnualPlansPage() {
                       </div>
                     );
                   })}
-                  {!detail.tasks.length && <p className="empty">No hay tareas registradas.</p>}
+                  {!detail.tasks.length && (
+                    <div className="emptyState">
+                      <h3>El plan todavía no tiene tareas</h3>
+                      <p>Añade una tarea, responsable y fecha límite para convertir los objetivos en trabajo concreto.</p>
+                    </div>
+                  )}
                 </div>
 
                 <form className="compactForm planForm" onSubmit={createTask}>
@@ -690,7 +727,9 @@ export default function AnnualPlansPage() {
                     </label>
                   </div>
                   <label>Fecha límite<input name="dueDate" type="date" /></label>
-                  <button className="secondaryButton">Añadir tarea</button>
+                  <button className="secondaryButton" disabled={Boolean(operation)}>
+                    {operation === 'create-task' ? 'Añadiendo…' : 'Añadir tarea'}
+                  </button>
                 </form>
               </article>
             </>
