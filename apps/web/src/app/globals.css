@@ -64,3 +64,7 @@
 
 
 .aiAssistBox{border-top:4px solid var(--institutional-2)}.aiAssistBox>label{display:grid;gap:6px;margin:12px 0}.aiResult{margin-top:16px;padding:16px;border:1px solid var(--line);border-radius:12px;background:#f7fafc}.aiResult pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;line-height:1.55;margin:10px 0 14px}.aiReviewNotice{margin:12px 0;padding:10px 12px;border-left:4px solid #b77b19;background:#fff7eb;font-size:.9rem;line-height:1.45}.aiInterpretation .aiReviewNotice{margin-top:10px}
+
+
+.networkAdminGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.networkAdminCard{display:grid;gap:14px}.networkAdminCard>label{display:grid;gap:6px}.institutionalReference{border-left:5px solid var(--institutional-2);background:#fbfdff}.institutionalObjectives{margin-top:16px}.institutionalObjectives ul{margin:10px 0 0;padding-left:22px;display:grid;gap:8px}.institutionalObjectives li{line-height:1.5}
+@media(max-width:850px){.networkAdminGrid{grid-template-columns:1fr}}
