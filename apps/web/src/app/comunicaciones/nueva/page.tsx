@@ -23,7 +23,7 @@ export default function NewCommunicationPage() {
   const [afternoon, setAfternoon] = useState(false);
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
-  const [smtpConfigured, setSmtpConfigured] = useState<boolean | null>(null);
+  const [resendConfigured, setSmtpConfigured] = useState<boolean | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -107,9 +107,9 @@ export default function NewCommunicationPage() {
       </div>
 
       {message && <div className="notice">{message}</div>}
-      {smtpConfigured === false && (
+      {resendConfigured === false && (
         <div className="notice">
-          El correo SMTP todavía no está configurado. La comunicación se publicará en CÍCLOPE y quedará preparada en la cola de correo hasta configurar SMTP.
+          Resend todavía no está configurado o activado. La comunicación se publicará en CÍCLOPE, pero no se enviará por correo hasta configurarlo en Administración → Integraciones.
         </div>
       )}
 
