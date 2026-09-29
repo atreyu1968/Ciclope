@@ -11,6 +11,13 @@ type SentCommunication = {
   originNetwork?: { name: string } | null;
   _count: { recipients: number };
   recipients: Array<{ userId: string; readAt?: string | null; respondedAt?: string | null }>;
+  attachments: Array<{
+    id: string;
+    originalName: string;
+    mimeType: string;
+    sizeBytes: number;
+    createdAt: string;
+  }>;
 };
 
 type MailJob = {
@@ -145,6 +152,23 @@ export default function SentCommunicationsPage() {
                   {delivery.queued > 0 && <span className="chip">En cola: {delivery.queued}</span>}
                   {delivery.failed > 0 && <span className="badge dangerBadge">Fallidos: {delivery.failed}</span>}
                 </div>
+                {item.attachments.length > 0 && (
+                  <div className="communicationAttachments">
+                    <strong>{item.attachments.length} adjunto{item.attachments.length === 1 ? '' : 's'}</strong>
+                    <div>
+                      {item.attachments.map((attachment) => (
+                        <a
+                          className="attachmentLink"
+                          key={attachment.id}
+                          href={`/api/communications/${item.id}/attachments/${attachment.id}/download`}
+                        >
+                          <span>{attachment.originalName}</span>
+                          <small>{Math.max(1, Math.round(attachment.sizeBytes / 1024))} KB</small>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="queueActions">
                 <button className="secondaryButton" onClick={() => void remindPending(item.id)}>Recordar a pendientes</button>
