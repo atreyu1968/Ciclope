@@ -31,6 +31,7 @@ type Task = {
   description?: string | null;
   dueDate?: string | null;
   status: string;
+  official?: boolean;
   completedAt?: string | null;
   owner?: User | null;
   objective?: { id: string; title: string } | null;
@@ -445,7 +446,10 @@ export default function AnnualPlansPage() {
                     return (
                       <div className={'taskRow ' + (overdue ? 'overdue' : '')} key={task.id}>
                         <div>
-                          <strong>{task.title}</strong>
+                          <div className="rowActions">
+                            <strong>{task.title}</strong>
+                            {task.official && <span className="badge success">Hito oficial</span>}
+                          </div>
                           <span>
                             {task.owner ? task.owner.firstName + ' ' + task.owner.lastName : 'Sin responsable'}
                             {task.objective ? ' · ' + task.objective.title : ''}
