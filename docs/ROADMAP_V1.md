@@ -79,7 +79,7 @@
 - [x] Coordinadores independientes por red.
 - [x] Indicadores diferenciados por red.
 - [x] Plan anual independiente por red.
-- [ ] Panel comparativo transversal de las cuatro redes.
+- [x] Panel comparativo transversal de las cuatro redes.
 - [ ] Configuración administrativa de textos/objetivos institucionales sin modificar código.
 
 ## 6. Registro de actuaciones por el profesorado
@@ -181,10 +181,10 @@
 - [x] Editor del borrador de memoria antes de guardar/presentar.
 - [x] Guardar la versión IA como narrativa del snapshot.
 - [ ] Exportación DOCX/ODT de memoria.
-- [ ] Comparativa entre periodos del mismo curso.
-- [ ] Comparativa interanual.
-- [ ] Alertas automáticas por indicadores anómalos o incompletos.
-- [ ] Informe ejecutivo conjunto de las cuatro redes.
+- [x] Comparativa entre periodos del mismo curso.
+- [x] Comparativa interanual.
+- [x] Alertas automáticas por indicadores anómalos o incompletos.
+- [x] Informe ejecutivo conjunto de las cuatro redes.
 
 ## 12. IA
 
@@ -219,10 +219,10 @@
 - [x] Cabecera dinámica.
 - [x] Panel central `/admin`.
 - [x] Accesos a profesorado, estructura, cursos e integraciones.
-- [ ] Menú de navegación persistente según rol.
-- [ ] Perfil del usuario.
-- [ ] Página 403 amigable.
-- [ ] Página 404 propia.
+- [x] Menú de navegación persistente según rol.
+- [x] Perfil del usuario.
+- [x] Página 403 amigable.
+- [x] Página 404 propia.
 - [ ] Estados vacíos coherentes.
 - [ ] Indicadores de carga en todas las acciones asíncronas.
 - [ ] Confirmaciones para operaciones destructivas.
