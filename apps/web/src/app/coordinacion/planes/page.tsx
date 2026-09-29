@@ -437,7 +437,12 @@ export default function AnnualPlansPage() {
                 <span className="badge">{statusLabels[plan.status] || plan.status}</span>
               </button>
             ))}
-            {!plans.length && !loading && <p className="empty">Todavía no hay planes creados.</p>}
+            {!plans.length && !loading && (
+              <div className="emptyState">
+                <h3>Todavía no hay planes creados</h3>
+                <p>Crea un plan para una de tus redes y úsalo como base de objetivos, tareas, hitos e indicadores.</p>
+              </div>
+            )}
           </div>
 
           {availableNetworks.length > 0 && (
@@ -482,8 +487,18 @@ export default function AnnualPlansPage() {
         </aside>
 
         <section className="planMain">
-          {loading && <div className="panel"><p>Cargando planificación…</p></div>}
-          {!loading && !detail && <div className="panel"><p className="empty">Selecciona o crea un plan para comenzar.</p></div>}
+          {loading && (
+            <div className="loadingState" role="status" aria-live="polite">
+              <span className="loadingSpinner" aria-hidden="true" />
+              <strong>Cargando planificación…</strong>
+            </div>
+          )}
+          {!loading && !detail && (
+            <div className="emptyState">
+              <h2>Selecciona o crea un plan</h2>
+              <p>El panel de detalle mostrará aquí los objetivos, tareas, progreso e hitos de la red seleccionada.</p>
+            </div>
+          )}
 
           {detail && (
             <>
@@ -595,7 +610,12 @@ export default function AnnualPlansPage() {
                       )}
                     </div>
                   ))}
-                  {!detail.objectives.length && <p className="empty">Añade el primer objetivo del plan.</p>}
+                  {!detail.objectives.length && (
+                    <div className="emptyState">
+                      <h3>El plan todavía no tiene objetivos</h3>
+                      <p>Añade el primer objetivo operativo para poder medir el avance y vincular actuaciones.</p>
+                    </div>
+                  )}
                 </div>
 
                 <form className="compactForm planForm" onSubmit={createObjective}>
