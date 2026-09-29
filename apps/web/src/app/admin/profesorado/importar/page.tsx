@@ -11,6 +11,23 @@ type ImportRow = {
   families?: string[];
 };
 
+type Preview = {
+  rows: Array<{
+    row: number;
+    email: string;
+    name: string;
+    action: 'CREATE' | 'UPDATE' | 'ERROR';
+    activeAccountExists?: boolean | null;
+    issues: string[];
+  }>;
+  summary: {
+    create: number;
+    update: number;
+    errors: number;
+    familiesToCreate: string[];
+  };
+};
+
 function splitCsvLine(line: string, delimiter: string) {
   const values: string[] = [];
   let current = '';
@@ -50,13 +67,38 @@ function normalizeHeader(value: string) {
 export default function ImportFacultyPage() {
   const router = useRouter();
   const [rows, setRows] = useState<ImportRow[]>([]);
+  const [preview, setPreview] = useState<Preview | null>(null);
   const [error, setError] = useState('');
   const [result, setResult] = useState<any>(null);
   const [sending, setSending] = useState(false);
+  const [checking, setChecking] = useState(false);
+
+  async function previewRows(nextRows: ImportRow[]) {
+    setChecking(true);
+    const response = await fetch('/api/users/import/preview', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ rows: nextRows }),
+    });
+    const body = await response.json().catch(() => ({}));
+    setChecking(false);
+
+    if (response.status === 401) {
+      router.push('/login');
+      return;
+    }
+    if (!response.ok) {
+      setPreview(null);
+      setError(Array.isArray(body?.message) ? body.message.join(' ') : body?.message || 'No se pudo validar el archivo.');
+      return;
+    }
+    setPreview(body);
+  }
 
   async function loadFile(event: ChangeEvent<HTMLInputElement>) {
     setError('');
     setResult(null);
+    setPreview(null);
     const file = event.target.files?.[0];
     if (!file) return;
     const text = await file.text();
@@ -97,10 +139,17 @@ export default function ImportFacultyPage() {
       setError('No se han encontrado filas válidas.');
       return;
     }
+    if (parsed.length > 1000) {
+      setError('La importación admite un máximo de 1.000 filas por archivo.');
+      return;
+    }
+
     setRows(parsed);
+    await previewRows(parsed);
   }
 
   async function importRows() {
+    if (!preview || preview.summary.errors > 0) return;
     setSending(true);
     setError('');
     const response = await fetch('/api/users/import', {
@@ -119,6 +168,7 @@ export default function ImportFacultyPage() {
       return;
     }
     setResult(body);
+    await previewRows(rows);
   }
 
   function downloadTemplate() {
@@ -138,7 +188,9 @@ export default function ImportFacultyPage() {
         <div>
           <p className="eyebrow">Administración</p>
           <h1>Importar profesorado</h1>
-          <p className="lead">Carga el claustro FP de una sola vez. Los correos existentes se actualizan; no se duplican usuarios.</p>
+          <p className="lead">
+            CÍCLOPE valida el archivo antes de escribir en la base de datos: detecta altas, actualizaciones y duplicados.
+          </p>
         </div>
         <div className="rowActions">
           <button className="secondaryButton" onClick={downloadTemplate}>Descargar plantilla</button>
@@ -152,36 +204,61 @@ export default function ImportFacultyPage() {
           Columnas: nombre, apellidos, email, turno y familias. Si un docente pertenece a varias familias, sepáralas con |.
         </p>
         <input type="file" accept=".csv,text/csv" onChange={loadFile} />
+        {checking && <p className="hint">Comprobando el archivo contra la base de datos…</p>}
         {error && <div className="errorBox">{error}</div>}
       </section>
 
-      {rows.length > 0 && (
+      {preview && (
+        <section className="statsGrid">
+          <article className="statCard"><strong>{preview.summary.create}</strong><span>cuentas nuevas</span></article>
+          <article className="statCard"><strong>{preview.summary.update}</strong><span>cuentas a actualizar</span></article>
+          <article className="statCard"><strong>{preview.summary.errors}</strong><span>filas con errores</span></article>
+          <article className="statCard"><strong>{preview.summary.familiesToCreate.length}</strong><span>familias nuevas</span></article>
+        </section>
+      )}
+
+      {preview?.summary.familiesToCreate.length ? (
+        <div className="notice">
+          <strong>Familias que se crearán:</strong> {preview.summary.familiesToCreate.join(', ')}
+        </div>
+      ) : null}
+
+      {rows.length > 0 && preview && (
         <section className="panel tablePanel">
           <div className="panelHeader">
             <div>
-              <p className="eyebrow">Vista previa</p>
+              <p className="eyebrow">Vista previa validada</p>
               <h2>{rows.length} docentes</h2>
             </div>
-            <button className="primaryButton" disabled={sending} onClick={importRows}>
-              {sending ? 'Importando…' : 'Importar profesorado'}
+            <button
+              className="primaryButton"
+              disabled={sending || checking || preview.summary.errors > 0}
+              onClick={() => void importRows()}
+            >
+              {sending ? 'Importando…' : preview.summary.errors > 0 ? 'Corrige los errores antes de importar' : 'Confirmar importación'}
             </button>
           </div>
           <div className="tableWrap">
             <table>
-              <thead><tr><th>Nombre</th><th>Correo</th><th>Turno</th><th>Familias</th></tr></thead>
+              <thead><tr><th>Fila</th><th>Nombre</th><th>Correo</th><th>Acción</th><th>Incidencias</th></tr></thead>
               <tbody>
-                {rows.slice(0, 100).map((row, index) => (
-                  <tr key={row.email + index}>
-                    <td>{row.lastName}, {row.firstName}</td>
+                {preview.rows.slice(0, 150).map((row) => (
+                  <tr key={row.row}>
+                    <td>{row.row}</td>
+                    <td>{row.name}</td>
                     <td>{row.email}</td>
-                    <td>{row.shift}</td>
-                    <td>{row.families?.join(', ') || '—'}</td>
+                    <td>
+                      <span className={row.action === 'ERROR' ? 'badge dangerBadge' : row.action === 'CREATE' ? 'badge success' : 'badge'}>
+                        {row.action === 'CREATE' ? 'Crear' : row.action === 'UPDATE' ? 'Actualizar' : 'Error'}
+                      </span>
+                    </td>
+                    <td>{row.issues.join(' ') || '—'}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          {rows.length > 100 && <p className="hint">Se muestran las primeras 100 filas de {rows.length}.</p>}
+          {preview.rows.length > 150 && <p className="hint">Se muestran las primeras 150 filas de {preview.rows.length}.</p>}
         </section>
       )}
 
@@ -189,7 +266,14 @@ export default function ImportFacultyPage() {
         <section className="successBox">
           <h2>Importación completada</h2>
           <p>{result.created} cuentas creadas · {result.updated} actualizadas · {result.familiesCreated} familias creadas.</p>
-          {result.errors?.length > 0 && <p>{result.errors.length} filas requieren revisión.</p>}
+          {result.errors?.length > 0 && (
+            <div className="errorBox">
+              <strong>{result.errors.length} filas no se importaron</strong>
+              {result.errors.slice(0, 20).map((item: any) => (
+                <p key={item.row}>Fila {item.row} · {item.email}: {item.message}</p>
+              ))}
+            </div>
+          )}
           {result.temporaryCredentials?.length > 0 && (
             <>
               <h3>Credenciales temporales de nuevas cuentas</h3>
@@ -199,6 +283,7 @@ export default function ImportFacultyPage() {
                   <tbody>{result.temporaryCredentials.map((item: any) => <tr key={item.email}><td>{item.email}</td><td><code>{item.password}</code></td></tr>)}</tbody>
                 </table>
               </div>
+              <p className="hint">Estas contraseñas se muestran para su entrega inicial; el usuario deberá cambiarlas al acceder.</p>
             </>
           )}
         </section>
