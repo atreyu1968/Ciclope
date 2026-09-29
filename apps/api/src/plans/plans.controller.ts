@@ -53,6 +53,15 @@ export class PlansController {
     return this.plans.createMilestone(user, dto);
   }
 
+  @Get('calendar')
+  @Roles(...PLAN_ROLES)
+  calendar(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('academicYearId') academicYearId?: string,
+  ) {
+    return this.plans.calendar(user, academicYearId);
+  }
+
   @Get()
   @Roles(...PLAN_ROLES)
   list(
