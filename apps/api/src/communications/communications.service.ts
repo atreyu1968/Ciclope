@@ -33,8 +33,11 @@ export class CommunicationsService {
     }
   }
 
-  mailStatus() {
-    return { configured: this.mail.isConfigured() };
+  async mailStatus(centerId: string) {
+    return {
+      provider: 'Resend',
+      configured: await this.mail.isConfigured(centerId),
+    };
   }
 
   async createAndPublish(user: AuthenticatedUser, dto: CreateCommunicationDto) {
@@ -111,6 +114,7 @@ export class CommunicationsService {
     });
 
     const delivery = await this.mail.enqueueCommunication(
+      user.centerId,
       communication.id,
       communication.title,
       communication.body,
@@ -118,7 +122,7 @@ export class CommunicationsService {
       communication.originNetwork?.name ?? 'CÍCLOPE FP',
     );
 
-    return { ...communication, emailDelivery: delivery, smtpConfigured: this.mail.isConfigured() };
+    return { ...communication, emailDelivery: delivery, resendConfigured: await this.mail.isConfigured(user.centerId) };
   }
 
   inbox(user: AuthenticatedUser) {
@@ -231,6 +235,7 @@ export class CommunicationsService {
     if (!pending.length) return { queued: 0, message: 'No hay destinatarios pendientes.' };
 
     return this.mail.enqueueCommunication(
+      communication.academicYear.centerId,
       communication.id,
       `Recordatorio: ${communication.title}`,
       communication.body,
