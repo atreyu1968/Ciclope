@@ -107,9 +107,9 @@
 - [x] Reenvío posterior por el profesor.
 - [x] Notificación por correo al validar/devolver.
 - [x] Validación múltiple desde la bandeja.
-- [ ] Filtros avanzados por red, fecha, familia, docente y estado.
-- [ ] Historial visible de cambios de estado.
-- [ ] Avisos de actuaciones pendientes demasiado tiempo.
+- [x] Filtros avanzados por red, fecha, familia, docente y estado.
+- [x] Historial visible de cambios de estado.
+- [x] Avisos de actuaciones pendientes demasiado tiempo.
 
 ## 8. Evidencias
 
