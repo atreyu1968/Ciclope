@@ -617,7 +617,7 @@ export default function AnnualPlansPage() {
                           <strong>{objective.title}</strong>
                           {objective.description && <p className="hint preLine">{objective.description}</p>}
                         </div>
-                        <select value={objective.status} disabled={Boolean(operation)} aria-busy={operation === 'objective:' + objective.id} onChange={(event) => void updateObjectiveStatus(objective.id, event.target.value)}>
+                        <select aria-label={'Estado del objetivo ' + objective.title} value={objective.status} disabled={Boolean(operation)} aria-busy={operation === 'objective:' + objective.id} onChange={(event) => void updateObjectiveStatus(objective.id, event.target.value)}>
                           <option value="PLANNED">Planificado</option>
                           <option value="IN_PROGRESS">En curso</option>
                           <option value="COMPLETED">Completado</option>
@@ -691,7 +691,7 @@ export default function AnnualPlansPage() {
                             {task.dueDate ? ' · ' + new Date(task.dueDate).toLocaleDateString('es-ES') : ''}
                           </span>
                         </div>
-                        <select value={task.status} disabled={Boolean(operation)} aria-busy={operation === 'task:' + task.id} onChange={(event) => void updateTaskStatus(task.id, event.target.value)}>
+                        <select aria-label={'Estado de la tarea ' + task.title} value={task.status} disabled={Boolean(operation)} aria-busy={operation === 'task:' + task.id} onChange={(event) => void updateTaskStatus(task.id, event.target.value)}>
                           <option value="TODO">Pendiente</option>
                           <option value="IN_PROGRESS">En curso</option>
                           <option value="DONE">Hecha</option>
