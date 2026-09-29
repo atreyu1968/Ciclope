@@ -42,6 +42,7 @@ export class ReportsController {
     @CurrentUser() user: AuthenticatedUser,
     @Query('academicYearId') academicYearId?: string,
     @Query('networkId') networkId?: string,
+    @Query('mode') mode?: string,
   ) {
     const report = await this.reports.summary(user, academicYearId, networkId);
     const safeReport = {
@@ -56,7 +57,9 @@ export class ReportsController {
       byMonth: report.byMonth,
       generatedAt: report.generatedAt,
     };
-    return this.integrations.interpretReport(user.centerId, safeReport);
+    return mode === 'draft'
+      ? this.integrations.draftReport(user.centerId, safeReport)
+      : this.integrations.interpretReport(user.centerId, safeReport);
   }
 
   @Get('actions.csv')
