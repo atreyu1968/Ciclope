@@ -91,6 +91,7 @@ model Center {
   users                User[]
   professionalFamilies ProfessionalFamily[]
   integrationSettings  CenterIntegrationSettings?
+  networkConfigs       CenterNetworkConfig[]
   auditLogs            AuditLog[]
 }
 
@@ -241,8 +242,24 @@ model Network {
   staffRequests  StaffRequestNetwork[]
   annualPlans    AnnualPlan[]
   reportSnapshots ReportSnapshot[]
+  centerConfigs  CenterNetworkConfig[]
   createdAt      DateTime              @default(now())
   updatedAt      DateTime              @updatedAt
+}
+
+model CenterNetworkConfig {
+  id                      String   @id @default(cuid())
+  centerId                String
+  networkId               String
+  description             String?
+  institutionalObjectives Json?
+  center                  Center   @relation(fields: [centerId], references: [id], onDelete: Cascade)
+  network                 Network  @relation(fields: [networkId], references: [id], onDelete: Cascade)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@unique([centerId, networkId])
+  @@index([networkId])
 }
 
 model NetworkCoordinator {
