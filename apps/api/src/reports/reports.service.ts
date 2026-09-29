@@ -436,6 +436,56 @@ export class ReportsService {
       ? Math.round((actionsWithEvidence / validated.length) * 100)
       : 0;
 
+    const reportAlerts: Array<{
+      key: string;
+      severity: 'INFO' | 'WARNING' | 'CRITICAL';
+      title: string;
+      detail: string;
+    }> = [];
+
+    if (validated.length === 0) {
+      reportAlerts.push({
+        key: 'NO_VALIDATED_ACTIONS',
+        severity: 'CRITICAL',
+        title: 'Sin actuaciones validadas',
+        detail: 'El periodo no contiene actuaciones validadas; las cifras no son representativas de actividad consolidada.',
+      });
+    }
+    if (evidenceCoveragePercent < 80 && validated.length > 0) {
+      reportAlerts.push({
+        key: 'LOW_EVIDENCE_COVERAGE',
+        severity: evidenceCoveragePercent < 50 ? 'CRITICAL' : 'WARNING',
+        title: 'Cobertura documental mejorable',
+        detail: `Solo el ${evidenceCoveragePercent}% de las actuaciones validadas dispone de al menos una evidencia.`,
+      });
+    }
+    if (pendingCount > 0) {
+      reportAlerts.push({
+        key: 'PENDING_VALIDATION',
+        severity: 'WARNING',
+        title: 'Datos pendientes de consolidar',
+        detail: `Hay ${pendingCount} actuaciones pendientes de validación que aún no forman parte de los indicadores oficiales.`,
+      });
+    }
+    if (returnedCount > 0) {
+      reportAlerts.push({
+        key: 'RETURNED_ACTIONS',
+        severity: 'WARNING',
+        title: 'Actuaciones devueltas',
+        detail: `Hay ${returnedCount} actuaciones devueltas al profesorado para corrección.`,
+      });
+    }
+
+    const overduePlanTasks = planProgress.reduce((sum, plan) => sum + plan.taskSummary.overdue, 0);
+    if (overduePlanTasks > 0) {
+      reportAlerts.push({
+        key: 'OVERDUE_PLAN_TASKS',
+        severity: 'WARNING',
+        title: 'Planificación fuera de plazo',
+        detail: `Los planes incluidos acumulan ${overduePlanTasks} tareas vencidas todavía abiertas.`,
+      });
+    }
+
     return {
       center: year.center,
       academicYear: {
@@ -469,6 +519,7 @@ export class ReportsService {
       },
       planProgress,
       networkInsights,
+      alerts: reportAlerts,
       byNetwork: [...networkMap.values()].sort((a, b) => b.actions - a.actions || a.name.localeCompare(b.name)),
       byFamily: [...familyMap.values()].sort((a, b) => b.actions - a.actions || a.name.localeCompare(b.name)),
       byType: [...typeMap.values()].sort((a, b) => b.actions - a.actions || a.type.localeCompare(b.type)),
