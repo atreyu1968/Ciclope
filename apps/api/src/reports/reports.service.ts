@@ -332,7 +332,7 @@ export class ReportsService {
       const now = new Date();
       const doneTasks = plan.tasks.filter((task) => task.status === PlanTaskStatus.DONE).length;
       const openTasks = plan.tasks.filter((task) =>
-        [PlanTaskStatus.TODO, PlanTaskStatus.IN_PROGRESS].includes(task.status),
+        task.status === PlanTaskStatus.TODO || task.status === PlanTaskStatus.IN_PROGRESS,
       );
       const overdueTasks = openTasks.filter((task) => task.dueDate && task.dueDate < now).length;
 
