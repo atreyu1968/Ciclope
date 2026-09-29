@@ -249,7 +249,7 @@ export default function ReportsPage() {
         )}
       </section>
 
-      {error && <div className="errorBox noPrint">{error}</div>
+      {error && <div className="errorBox noPrint">{error}</div>}
       {aiError && <div className="errorBox noPrint">{aiError}</div>}
       {loading && <div className="panel noPrint"><p>Generando informe…</p></div>}
 
