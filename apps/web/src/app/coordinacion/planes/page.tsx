@@ -5,6 +5,14 @@ import { useRouter } from 'next/navigation';
 
 type Network = { id: string; name: string };
 type User = { id: string; firstName: string; lastName: string; email: string };
+type Me = { roles: string[] };
+type Milestone = {
+  id: string;
+  title: string;
+  description?: string | null;
+  dueDate: string;
+  official: boolean;
+};
 type PlanListItem = {
   id: string;
   title: string;
@@ -47,6 +55,8 @@ type PlanDetail = {
   tasks: Task[];
 };
 
+const GLOBAL_ROLES = ['SUPERADMIN', 'ADMIN_CENTRO', 'DIRECCION', 'COORDINADOR_CICLOPE'];
+
 const metricLabels: Record<string, string> = {
   ACTIONS: 'Actuaciones validadas',
   PARTICIPATIONS: 'Participaciones de alumnado',
@@ -75,6 +85,8 @@ export default function AnnualPlansPage() {
   const [plans, setPlans] = useState<PlanListItem[]>([]);
   const [networks, setNetworks] = useState<Network[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [me, setMe] = useState<Me | null>(null);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [selectedId, setSelectedId] = useState('');
   const [detail, setDetail] = useState<PlanDetail | null>(null);
   const [message, setMessage] = useState('');
@@ -97,31 +109,45 @@ export default function AnnualPlansPage() {
     });
   }
 
+  async function refreshMilestones() {
+    const response = await fetch('/api/plans/milestones');
+    if (!response.ok) return;
+    setMilestones(await response.json());
+  }
+
   async function loadBase() {
     setLoading(true);
     setError('');
     try {
-      const [plansResponse, usersResponse, dashboardResponse] = await Promise.all([
+      const [plansResponse, usersResponse, dashboardResponse, meResponse, milestonesResponse] = await Promise.all([
         fetch('/api/plans'),
         fetch('/api/users'),
         fetch('/api/dashboard/me'),
+        fetch('/api/auth/me'),
+        fetch('/api/plans/milestones'),
       ]);
-      if ([plansResponse, usersResponse, dashboardResponse].some((response) => response.status === 401)) {
+      if ([plansResponse, usersResponse, dashboardResponse, meResponse, milestonesResponse].some((response) => response.status === 401)) {
         router.push('/login');
         return;
       }
-      const [planBody, userBody, dashboardBody] = await Promise.all([
+      const [planBody, userBody, dashboardBody, meBody, milestoneBody] = await Promise.all([
         plansResponse.json().catch(() => ([])),
         usersResponse.json().catch(() => ([])),
         dashboardResponse.json().catch(() => ({})),
+        meResponse.json().catch(() => ({})),
+        milestonesResponse.json().catch(() => ([])),
       ]);
       if (!plansResponse.ok) throw new Error(messageFrom(planBody, 'No se pudieron cargar los planes.'));
       if (!usersResponse.ok) throw new Error(messageFrom(userBody, 'No se pudo cargar el profesorado.'));
       if (!dashboardResponse.ok) throw new Error(messageFrom(dashboardBody, 'No se pudieron cargar tus coordinaciones.'));
+      if (!meResponse.ok) throw new Error(messageFrom(meBody, 'No se pudo cargar tu sesión.'));
+      if (!milestonesResponse.ok) throw new Error(messageFrom(milestoneBody, 'No se pudieron cargar los hitos del curso.'));
 
       const loadedPlans = planBody as PlanListItem[];
       setPlans(loadedPlans);
       setUsers(userBody as User[]);
+      setMe(meBody as Me);
+      setMilestones(milestoneBody as Milestone[]);
       setNetworks((dashboardBody.coordinationNetworks || []) as Network[]);
       setSelectedId((current) =>
         current && loadedPlans.some((item) => item.id === current) ? current : loadedPlans[0]?.id || '',
@@ -154,6 +180,10 @@ export default function AnnualPlansPage() {
     });
   }, [selectedId, router]);
 
+  const canManageCommonMilestones = Boolean(
+    me && GLOBAL_ROLES.some((role) => me.roles.includes(role)),
+  );
+
   const availableNetworks = useMemo(
     () => networks.filter((network) => !plans.some((plan) => plan.network.id === network.id)),
     [networks, plans],
@@ -182,6 +212,37 @@ export default function AnnualPlansPage() {
     form.reset();
     setMessage('Plan anual creado.');
     await refreshPlans(body.id);
+  }
+
+  async function createCommonMilestone(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setMessage('');
+    setError('');
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const response = await fetch('/api/plans/milestones', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: data.get('title'),
+        description: data.get('description') || undefined,
+        dueDate: data.get('dueDate'),
+      }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setError(messageFrom(body, 'No se pudo crear el hito común.'));
+      return;
+    }
+
+    form.reset();
+    setMessage(`Hito distribuido a ${body.distributedToPlans ?? 0} planes.`);
+    await Promise.all([refreshMilestones(), refreshPlans(selectedId || undefined)]);
+    if (selectedId) {
+      const idToReload = selectedId;
+      setSelectedId('');
+      queueMicrotask(() => setSelectedId(idToReload));
+    }
   }
 
   async function updatePlanStatus(status: string) {
@@ -349,6 +410,31 @@ export default function AnnualPlansPage() {
               <label>Título<input name="title" placeholder="Opcional: se genera automáticamente" /></label>
               <label>Resumen<textarea name="summary" rows={4} placeholder="Prioridades y alcance del plan" /></label>
               <button className="primaryButton">Crear plan anual</button>
+            </form>
+          )}
+
+          {milestones.length > 0 && (
+            <div className="compactForm">
+              <h3>Hitos comunes del curso</h3>
+              <div className="milestoneMiniList">
+                {milestones.map((milestone) => (
+                  <div key={milestone.id}>
+                    <strong>{milestone.title}</strong>
+                    <span>{new Date(milestone.dueDate).toLocaleDateString('es-ES')}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {canManageCommonMilestones && (
+            <form className="compactForm" onSubmit={createCommonMilestone}>
+              <h3>Añadir hito común</h3>
+              <p className="hint">Se añadirá a todos los planes del curso y también a los que se creen después.</p>
+              <label>Título<input name="title" required maxLength={240} placeholder="Ej.: Entregar informe del primer trimestre" /></label>
+              <label>Fecha límite<input name="dueDate" type="date" required /></label>
+              <label>Descripción<textarea name="description" rows={3} /></label>
+              <button className="secondaryButton">Distribuir a todas las redes</button>
             </form>
           )}
         </aside>
