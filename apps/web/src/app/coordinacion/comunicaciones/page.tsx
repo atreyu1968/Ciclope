@@ -44,22 +44,31 @@ export default function SentCommunicationsPage() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [workingId, setWorkingId] = useState('');
+  const [loading, setLoading] = useState(true);
 
   async function load() {
-    const [communicationsResponse, jobsResponse] = await Promise.all([
-      fetch('/api/communications/sent'),
-      fetch('/api/communications/mail-jobs'),
-    ]);
-    if (communicationsResponse.status === 401 || jobsResponse.status === 401) {
-      router.push('/login');
-      return;
-    }
-    if (!communicationsResponse.ok || !jobsResponse.ok) {
+    setLoading(true);
+    try {
+      const [communicationsResponse, jobsResponse] = await Promise.all([
+        fetch('/api/communications/sent'),
+        fetch('/api/communications/mail-jobs'),
+      ]);
+      if (communicationsResponse.status === 401 || jobsResponse.status === 401) {
+        router.push('/login');
+        return;
+      }
+      if (!communicationsResponse.ok || !jobsResponse.ok) {
+        setError('No se pudieron cargar las comunicaciones o el estado de los correos.');
+        return;
+      }
+      setError('');
+      setItems(await communicationsResponse.json());
+      setMailJobs(await jobsResponse.json());
+    } catch {
       setError('No se pudieron cargar las comunicaciones o el estado de los correos.');
-      return;
+    } finally {
+      setLoading(false);
     }
-    setItems(await communicationsResponse.json());
-    setMailJobs(await jobsResponse.json());
   }
 
   useEffect(() => { void load(); }, [router]);
@@ -126,6 +135,12 @@ export default function SentCommunicationsPage() {
 
       {error && <div className="errorBox">{error}</div>}
       {message && <div className="notice">{message}</div>}
+      {loading && !error && (
+        <div className="loadingState" role="status" aria-live="polite">
+          <span className="loadingSpinner" aria-hidden="true" />
+          <strong>Cargando comunicaciones enviadas…</strong>
+        </div>
+      )}
 
       <div className="actionQueue">
         {items.map((item) => {
@@ -176,8 +191,12 @@ export default function SentCommunicationsPage() {
             </article>
           );
         })}
-        {!items.length && !error && (
-          <div className="panel"><h2>Aún no hay comunicaciones enviadas</h2></div>
+        {!loading && !items.length && !error && (
+          <div className="emptyState">
+            <h2>Aún no hay comunicaciones enviadas</h2>
+            <p>Publica una comunicación para informar al claustro de FP y poder seguir su lectura, respuestas y entrega por correo.</p>
+            <div className="rowActions"><a className="primaryButton" href="/comunicaciones/nueva">Crear comunicación</a></div>
+          </div>
         )}
       </div>
 
@@ -213,7 +232,10 @@ export default function SentCommunicationsPage() {
             ))}
           </div>
         ) : (
-          <p className="empty">La cola no registra correos que hayan agotado todos sus intentos automáticos.</p>
+          <div className="emptyState">
+            <h3>Sin incidencias definitivas de entrega</h3>
+            <p>La cola no registra correos que hayan agotado todos sus intentos automáticos.</p>
+          </div>
         )}
       </section>
     </main>
