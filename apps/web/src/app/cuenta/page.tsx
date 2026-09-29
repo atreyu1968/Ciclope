@@ -74,7 +74,14 @@ export default function AccountPage() {
   }
 
   if (error) return <main className="shell"><div className="errorBox">{error}</div></main>;
-  if (!me) return <main className="shell"><p>Cargando perfil…</p></main>;
+  if (!me) return (
+    <main className="shell">
+      <div className="loadingState" role="status" aria-live="polite">
+        <span className="loadingSpinner" aria-hidden="true" />
+        <strong>Cargando perfil y preferencias…</strong>
+      </div>
+    </main>
+  );
 
   return (
     <main className="shell">
