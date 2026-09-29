@@ -26,6 +26,7 @@ export default function ActionEvidencePage() {
   const [items, setItems] = useState<Evidence[]>([]);
   const [message, setMessage] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [workingId, setWorkingId] = useState('');
 
   async function load() {
     const [actionResponse, evidenceResponse] = await Promise.all([
@@ -88,6 +89,23 @@ export default function ActionEvidencePage() {
     await load();
   }
 
+  async function removeEvidence(item: Evidence) {
+    if (!window.confirm(`¿Eliminar la evidencia “${item.title || 'sin título'}”? Esta operación no puede deshacerse.`)) {
+      return;
+    }
+    setWorkingId(item.id);
+    setMessage('');
+    const response = await fetch(`/api/evidence/${item.id}`, { method: 'DELETE' });
+    const body = await response.json().catch(() => ({}));
+    setWorkingId('');
+    if (!response.ok) {
+      setMessage(Array.isArray(body?.message) ? body.message.join(' ') : body?.message || 'No se pudo eliminar la evidencia.');
+      return;
+    }
+    setMessage('Evidencia eliminada.');
+    await load();
+  }
+
   return (
     <main className="shell">
       <div className="pageHeader">
@@ -141,9 +159,28 @@ export default function ActionEvidencePage() {
                     {new Date(item.createdAt).toLocaleString('es-ES')}
                   </span>
                 </div>
-                {item.kind === 'LINK' && item.url
-                  ? <a className="secondaryButton" href={item.url} target="_blank" rel="noreferrer">Abrir</a>
-                  : <a className="secondaryButton" href={`/api/evidence/${item.id}/download`}>Descargar</a>}
+                <div className="rowActions">
+                  {item.kind === 'LINK' && item.url ? (
+                    <a className="secondaryButton" href={item.url} target="_blank" rel="noreferrer">Abrir</a>
+                  ) : (
+                    <>
+                      {(item.mimeType?.startsWith('image/') || item.mimeType === 'application/pdf' || item.mimeType === 'video/mp4') && (
+                        <a className="secondaryButton" href={`/api/evidence/${item.id}/view`} target="_blank" rel="noreferrer">Vista previa</a>
+                      )}
+                      <a className="secondaryButton" href={`/api/evidence/${item.id}/download`}>Descargar</a>
+                    </>
+                  )}
+                  {action && !['VALIDATED', 'ARCHIVED'].includes(action.status) && (
+                    <button
+                      className="textButton dangerText"
+                      type="button"
+                      disabled={workingId === item.id}
+                      onClick={() => void removeEvidence(item)}
+                    >
+                      {workingId === item.id ? 'Eliminando…' : 'Eliminar'}
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
             {!items.length && <p className="empty">Aún no hay evidencias asociadas.</p>}
