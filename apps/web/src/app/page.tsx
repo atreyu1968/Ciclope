@@ -42,6 +42,7 @@ export default function Home() {
         <div className="metric"><strong>03</strong><a href="/comunicaciones">Comunicaciones</a><a className="hint" href="/buzon">Buzón CÍCLOPE</a></div>
       </section>
       <section className="quickLinks">
+        <a className="primaryButton" href="/admin">Administración</a>
         <a className="secondaryButton" href="/admin/profesorado">Profesorado</a>
         <a className="secondaryButton" href="/admin/estructura">Familias y grupos</a>
         <a className="secondaryButton" href="/admin/cursos">Cursos y coordinaciones</a>
