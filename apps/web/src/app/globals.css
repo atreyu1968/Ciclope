@@ -68,3 +68,20 @@
 
 .networkAdminGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.networkAdminCard{display:grid;gap:14px}.networkAdminCard>label{display:grid;gap:6px}.institutionalReference{border-left:5px solid var(--institutional-2);background:#fbfdff}.institutionalObjectives{margin-top:16px}.institutionalObjectives ul{margin:10px 0 0;padding-left:22px;display:grid;gap:8px}.institutionalObjectives li{line-height:1.5}
 @media(max-width:850px){.networkAdminGrid{grid-template-columns:1fr}}
+
+
+.formStepNav{display:flex;gap:8px;overflow-x:auto;padding:4px 0 10px;scrollbar-width:thin}.formStepNav a{white-space:nowrap;border:1px solid var(--line);border-radius:999px;padding:8px 11px;background:#fff;color:var(--institutional);font-size:.8rem;font-weight:750}.mobileOptimizedForm fieldset{scroll-margin-top:110px}
+@media(max-width:640px){
+  .mobileOptimizedForm{gap:14px}
+  .mobileOptimizedForm fieldset{padding:18px 14px;border-radius:14px;scroll-margin-top:96px}
+  .mobileOptimizedForm legend{padding:0 5px;font-size:.95rem}
+  .mobileOptimizedForm input,.mobileOptimizedForm textarea,.mobileOptimizedForm select{font-size:16px;min-height:46px;padding:11px}
+  .mobileOptimizedForm textarea{min-height:120px}
+  .mobileOptimizedForm .checkCard{min-height:50px;padding:11px 12px;align-items:center}
+  .mobileOptimizedForm .checkCard input[type="checkbox"]{width:20px;height:20px;min-height:20px}
+  .mobileOptimizedForm .networkDetailCard{padding:14px}
+  .formStepNav{position:sticky;top:42px;z-index:12;margin:0 -12px;padding:9px 12px;background:rgba(244,247,250,.97);border-bottom:1px solid var(--line);backdrop-filter:blur(7px)}
+  .formSubmitActions{position:sticky;bottom:0;z-index:15;display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px -12px -72px;padding:12px;background:rgba(255,255,255,.97);border-top:1px solid var(--line);box-shadow:0 -8px 22px rgba(21,36,58,.08);backdrop-filter:blur(8px)}
+  .formSubmitActions .primaryButton,.formSubmitActions .secondaryButton{width:100%;min-height:48px;padding:10px 8px}
+  .formShell:has(.mobileOptimizedForm){padding-bottom:120px}
+}
