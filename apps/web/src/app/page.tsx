@@ -45,6 +45,7 @@ export default function Home() {
         <a className="secondaryButton" href="/admin/profesorado">Profesorado</a>
         <a className="secondaryButton" href="/admin/estructura">Familias y grupos</a>
         <a className="secondaryButton" href="/admin/cursos">Cursos y coordinaciones</a>
+        <a className="secondaryButton" href="/admin/integraciones">Integraciones</a>
         <a className="secondaryButton" href="/coordinacion/planes">Planes anuales</a>
         <a className="secondaryButton" href="/informes">Informes</a>
       </section>
