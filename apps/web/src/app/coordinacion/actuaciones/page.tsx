@@ -3,27 +3,50 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-type Network = { id: string; name: string };
+type Network = { id: string; name: string; code: string };
 type Action = {
   id: string; title: string; description: string; type: string; status: string;
   activityDate: string; studentCount?: number | null; submittedByName: string; submittedByEmail: string;
+  networkDetails?: Record<string, Record<string, string | boolean>> | null;
+  evidence: Array<{ id: string }>;
   networks: Array<{ network: Network }>;
 };
+type FormField = {
+  key: string;
+  label: string;
+  type: 'select' | 'boolean' | 'text';
+  options?: Array<{ value: string; label: string }>;
+};
+type FormConfig = Record<string, FormField[]>;
 
 export default function CoordinationActionsPage() {
   const router = useRouter();
   const [actions, setActions] = useState<Action[]>([]);
+  const [formConfig, setFormConfig] = useState<FormConfig>({});
   const [selected, setSelected] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
   async function load() {
-    const response = await fetch('/api/actions?status=PENDING_VALIDATION');
-    if (response.status === 401) { router.push('/login'); return; }
+    const [response, configResponse] = await Promise.all([
+      fetch('/api/actions?status=PENDING_VALIDATION'),
+      fetch('/api/actions/form-config'),
+    ]);
+    if (response.status === 401 || configResponse.status === 401) { router.push('/login'); return; }
     if (response.status === 403) { setError('Tu cuenta no tiene una coordinación asignada en el curso activo.'); return; }
-    if (!response.ok) { setError('No se pudo cargar la bandeja.'); return; }
+    if (!response.ok || !configResponse.ok) { setError('No se pudo cargar la bandeja.'); return; }
     setActions(await response.json());
+    setFormConfig(await configResponse.json());
     setSelected([]);
+  }
+
+  function detailLabel(network: Network, key: string, value: string | boolean) {
+    const field = (formConfig[network.code] || []).find((item) => item.key === key);
+    if (!field) return null;
+    const rendered = typeof value === 'boolean'
+      ? (value ? 'Sí' : 'No')
+      : field.options?.find((option) => option.value === value)?.label ?? value;
+    return `${field.label}: ${rendered}`;
   }
 
   useEffect(() => { void load(); }, []);
@@ -97,7 +120,27 @@ export default function CoordinationActionsPage() {
               </div>
               <h2>{action.title}</h2>
               <p>{action.description}</p>
-              <div className="chipRow">{action.networks.map(({ network }) => <span className="chip" key={network.id}>{network.name}</span>)}</div>
+              <div className="chipRow">
+                {action.networks.map(({ network }) => <span className="chip" key={network.id}>{network.name}</span>)}
+                <span className={action.evidence.length ? 'chip' : 'chip warningChip'}>
+                  {action.evidence.length ? `${action.evidence.length} evidencias` : 'Sin evidencia'}
+                </span>
+              </div>
+              {action.networks.map(({ network }) => {
+                const values = action.networkDetails?.[network.code];
+                if (!values || !Object.keys(values).length) return null;
+                return (
+                  <div className="validationDetails" key={network.id}>
+                    <strong>{network.name}</strong>
+                    <div className="chipRow">
+                      {Object.entries(values).map(([key, value]) => {
+                        const label = detailLabel(network, key, value);
+                        return label ? <span className="chip" key={key}>{label}</span> : null;
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
               <p className="submitter">Registrada por <strong>{action.submittedByName}</strong> · {action.submittedByEmail}</p>
             </div>
             <div className="queueActions">
