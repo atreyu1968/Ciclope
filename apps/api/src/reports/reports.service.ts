@@ -1,7 +1,8 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { ActionStatus, PlanMetric } from '../generated/prisma/client';
+import { ActionStatus, NetworkCode, PlanMetric } from '../generated/prisma/client';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { PrismaService } from '../database/prisma.service';
+import { ACTION_NETWORK_FIELDS } from '../actions/action-form.config';
 
 type ReportScope = {
   academicYearId: string;
@@ -146,6 +147,16 @@ export class ReportsService {
     const familyMap = new Map<string, { id: string; name: string; actions: number; participants: number }>();
     const typeMap = new Map<string, { type: string; actions: number; participants: number }>();
     const monthMap = new Map<string, { month: string; actions: number; participants: number }>();
+    const insightMap = new Map<string, {
+      id: string;
+      name: string;
+      code: NetworkCode;
+      fields: Map<string, {
+        key: string;
+        label: string;
+        values: Map<string, { value: string; label: string; count: number }>;
+      }>;
+    }>();
 
     for (const action of validated) {
       const participants = action.studentCount ?? 0;
@@ -190,6 +201,52 @@ export class ReportsService {
         row.participants += participants;
         row.evidence += action.evidence.length;
         networkMap.set(relation.networkId, row);
+
+        const rootDetails =
+          action.networkDetails &&
+          typeof action.networkDetails === 'object' &&
+          !Array.isArray(action.networkDetails)
+            ? action.networkDetails as Record<string, unknown>
+            : {};
+        const networkDetails = rootDetails[relation.network.code];
+        if (networkDetails && typeof networkDetails === 'object' && !Array.isArray(networkDetails)) {
+          const values = networkDetails as Record<string, unknown>;
+          const insight = insightMap.get(relation.networkId) ?? {
+            id: relation.networkId,
+            name: relation.network.name,
+            code: relation.network.code,
+            fields: new Map(),
+          };
+
+          for (const field of ACTION_NETWORK_FIELDS[relation.network.code]) {
+            const rawValue = values[field.key];
+            if (rawValue === undefined || rawValue === null || rawValue === '') continue;
+
+            let value = '';
+            let label = '';
+            if (field.type === 'boolean' && typeof rawValue === 'boolean') {
+              value = rawValue ? 'true' : 'false';
+              label = rawValue ? 'Sí' : 'No';
+            } else if (typeof rawValue === 'string') {
+              value = rawValue;
+              label = field.options?.find((option) => option.value === rawValue)?.label ?? rawValue;
+            } else {
+              continue;
+            }
+
+            const fieldRow = insight.fields.get(field.key) ?? {
+              key: field.key,
+              label: field.label,
+              values: new Map(),
+            };
+            const valueRow = fieldRow.values.get(value) ?? { value, label, count: 0 };
+            valueRow.count += 1;
+            fieldRow.values.set(value, valueRow);
+            insight.fields.set(field.key, fieldRow);
+          }
+
+          insightMap.set(relation.networkId, insight);
+        }
       }
 
       const familiesInAction = new Map<string, { id: string; name: string; participants: number }>();
@@ -273,6 +330,22 @@ export class ReportsService {
       };
     });
 
+    const networkInsights = [...insightMap.values()]
+      .map((network) => ({
+        id: network.id,
+        name: network.name,
+        code: network.code,
+        fields: [...network.fields.values()]
+          .map((field) => ({
+            key: field.key,
+            label: field.label,
+            values: [...field.values.values()].sort((a, b) => b.count - a.count || a.label.localeCompare(b.label)),
+          }))
+          .filter((field) => field.values.length),
+      }))
+      .filter((network) => network.fields.length)
+      .sort((a, b) => a.name.localeCompare(b.name));
+
     const actionsWithoutEvidence = validated.length - actionsWithEvidence;
     const evidenceCoveragePercent = validated.length
       ? Math.round((actionsWithEvidence / validated.length) * 100)
@@ -305,6 +378,7 @@ export class ReportsService {
         evidenceCoveragePercent,
       },
       planProgress,
+      networkInsights,
       byNetwork: [...networkMap.values()].sort((a, b) => b.actions - a.actions || a.name.localeCompare(b.name)),
       byFamily: [...familyMap.values()].sort((a, b) => b.actions - a.actions || a.name.localeCompare(b.name)),
       byType: [...typeMap.values()].sort((a, b) => b.actions - a.actions || a.type.localeCompare(b.type)),
@@ -348,6 +422,7 @@ export class ReportsService {
       'Alumnado',
       'Duración (min)',
       'Evidencias',
+      'Datos específicos de red',
     ].map(escape).join(';');
 
     const lines = rows.map((action) => [
@@ -362,6 +437,28 @@ export class ReportsService {
       action.studentCount ?? '',
       action.durationMinutes ?? '',
       action.evidence.length,
+      action.networks.flatMap((relation) => {
+        const rootDetails =
+          action.networkDetails &&
+          typeof action.networkDetails === 'object' &&
+          !Array.isArray(action.networkDetails)
+            ? action.networkDetails as Record<string, unknown>
+            : {};
+        const networkDetails = rootDetails[relation.network.code];
+        if (!networkDetails || typeof networkDetails !== 'object' || Array.isArray(networkDetails)) return [];
+
+        const values = networkDetails as Record<string, unknown>;
+        return ACTION_NETWORK_FIELDS[relation.network.code].flatMap((field) => {
+          const rawValue = values[field.key];
+          if (rawValue === undefined || rawValue === null || rawValue === '') return [];
+          const valueLabel = field.type === 'boolean' && typeof rawValue === 'boolean'
+            ? (rawValue ? 'Sí' : 'No')
+            : typeof rawValue === 'string'
+              ? field.options?.find((option) => option.value === rawValue)?.label ?? rawValue
+              : '';
+          return valueLabel ? [`${relation.network.name} · ${field.label}: ${valueLabel}`] : [];
+        });
+      }).join(' | '),
     ].map(escape).join(';'));
 
     return '\uFEFF' + [header, ...lines].join('\n');
