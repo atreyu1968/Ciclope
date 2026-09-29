@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ActionStatus, CommunicationStatus, StaffRequestStatus } from '../generated/prisma/client';
+import { ActionStatus, CommunicationStatus, PlanTaskStatus, StaffRequestStatus } from '../generated/prisma/client';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { PrismaService } from '../database/prisma.service';
 
@@ -18,6 +18,8 @@ export class DashboardService {
         activeYear: null,
         coordinationNetworks: [],
         pendingActions: 0,
+        validatedWithoutEvidence: 0,
+        overduePlanTasks: 0,
         openStaffRequests: 0,
         returnedOwnActions: 0,
         unreadCommunications: 0,
@@ -37,6 +39,8 @@ export class DashboardService {
       coordinationNetworks,
       pendingActions,
       pendingActionItems,
+      validatedWithoutEvidence,
+      overduePlanTasks,
       openStaffRequests,
       returnedOwnActions,
       unreadCommunications,
@@ -73,6 +77,24 @@ export class DashboardService {
         },
         orderBy: { createdAt: 'asc' },
         take: 5,
+      }),
+      this.prisma.action.count({
+        where: {
+          academicYearId: user.academicYearId,
+          status: ActionStatus.VALIDATED,
+          evidence: { none: {} },
+          ...coordinationNetworkFilter,
+        },
+      }),
+      this.prisma.planTask.count({
+        where: {
+          dueDate: { lt: new Date() },
+          status: { in: [PlanTaskStatus.TODO, PlanTaskStatus.IN_PROGRESS] },
+          plan: {
+            academicYearId: user.academicYearId,
+            ...(global ? {} : { networkId: { in: user.coordinatorNetworkIds } }),
+          },
+        },
       }),
       this.prisma.staffRequest.count({
         where: {
@@ -129,6 +151,8 @@ export class DashboardService {
     const communicationFollowups = communicationItems.length;
     const rawMinutes =
       pendingActions * 1 +
+      validatedWithoutEvidence * 1 +
+      overduePlanTasks * 2 +
       openStaffRequests * 3 +
       communicationFollowups * 2 +
       returnedOwnActions * 2 +
@@ -146,6 +170,18 @@ export class DashboardService {
         priority: 'high',
         title: `${pendingActions} actuaciones pendientes de validar`,
         href: '/coordinacion/actuaciones',
+      }] : []),
+      ...(overduePlanTasks ? [{
+        key: 'overdue-plan-tasks',
+        priority: 'high',
+        title: `${overduePlanTasks} tareas del plan anual fuera de plazo`,
+        href: '/coordinacion',
+      }] : []),
+      ...(validatedWithoutEvidence ? [{
+        key: 'missing-evidence',
+        priority: 'medium',
+        title: `${validatedWithoutEvidence} actuaciones validadas sin evidencia`,
+        href: '/informes',
       }] : []),
       ...(communicationFollowups ? [{
         key: 'communications-followup',
@@ -172,6 +208,8 @@ export class DashboardService {
       coordinationNetworks,
       pendingActions,
       pendingActionItems,
+      validatedWithoutEvidence,
+      overduePlanTasks,
       openStaffRequests,
       returnedOwnActions,
       unreadCommunications,
