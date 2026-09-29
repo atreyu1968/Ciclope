@@ -88,11 +88,13 @@ export default function SentCommunicationsPage() {
   const failedJobs = mailJobs.filter((job) => job.status === 'FAILED');
 
   async function remindPending(id: string) {
+    setWorkingId('remind:' + id);
     setMessage('');
     setError('');
     const response = await fetch(`/api/communications/${id}/remind-pending`, { method: 'POST' });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
+      setWorkingId('');
       setError(body.message || 'No se pudo preparar el recordatorio.');
       return;
     }
@@ -100,6 +102,7 @@ export default function SentCommunicationsPage() {
       ? `Recordatorio preparado para ${body.queued} personas pendientes.`
       : body.message || 'No hay personas pendientes.');
     await load();
+    setWorkingId('');
   }
 
   async function retry(job: MailJob) {
@@ -186,7 +189,9 @@ export default function SentCommunicationsPage() {
                 )}
               </div>
               <div className="queueActions">
-                <button className="secondaryButton" onClick={() => void remindPending(item.id)}>Recordar a pendientes</button>
+                <button className="secondaryButton" disabled={Boolean(workingId)} onClick={() => void remindPending(item.id)}>
+                  {workingId === 'remind:' + item.id ? 'Preparando…' : 'Recordar a pendientes'}
+                </button>
               </div>
             </article>
           );
@@ -223,7 +228,7 @@ export default function SentCommunicationsPage() {
                 <button
                   className="secondaryButton"
                   type="button"
-                  disabled={workingId === job.id}
+                  disabled={Boolean(workingId)}
                   onClick={() => void retry(job)}
                 >
                   {workingId === job.id ? 'Preparando…' : 'Reintentar'}
