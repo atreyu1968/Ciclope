@@ -558,8 +558,8 @@ export default function ReportsPage() {
                 </p>
               </div>
               <p className="preLine printOnly">{aiText}</p>
-              <p className="reportNote">
-                Texto generado a partir de indicadores agregados y revisable por la coordinación antes de su uso oficial.
+              <p className="aiReviewNotice">
+                Texto generado con IA a partir de indicadores agregados. Requiere revisión humana antes de guardarlo, presentarlo o utilizarlo oficialmente.
               </p>
             </section>
           )}
