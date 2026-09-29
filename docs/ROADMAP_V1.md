@@ -65,9 +65,9 @@
 - [x] Importación masiva de profesorado.
 - [x] Edición completa de ficha de profesor.
 - [x] Desactivación/reactivación sin pérdida de histórico.
-- [ ] Exportación del profesorado.
-- [ ] Informe de errores y previsualización antes de una importación masiva.
-- [ ] Gestión de duplicados en importación.
+- [x] Exportación del profesorado.
+- [x] Informe de errores y previsualización antes de una importación masiva.
+- [x] Gestión de duplicados en importación.
 
 ## 5. Las cuatro redes
 
