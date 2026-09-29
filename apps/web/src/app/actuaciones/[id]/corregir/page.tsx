@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 
-type Network = { id: string; name: string };
+type Network = { id: string; name: string; code: string };
 type Group = {
   id: string;
   name: string;
@@ -16,6 +16,14 @@ type Objective = {
   description?: string | null;
   plan: { networkId: string; network: { id: string; name: string } };
 };
+type FormField = {
+  key: string;
+  label: string;
+  type: 'select' | 'boolean' | 'text';
+  help?: string;
+  options?: Array<{ value: string; label: string }>;
+};
+type FormConfig = Record<string, FormField[]>;
 type Action = {
   id: string;
   title: string;
@@ -26,6 +34,7 @@ type Action = {
   studentCount?: number | null;
   status: string;
   returnedReason?: string | null;
+  networkDetails?: Record<string, Record<string, string | boolean>> | null;
   networks: Array<{ network: Network }>;
   groups: Array<{ teachingGroup: Group }>;
   objectives: Array<{ objective: { id: string; title: string; plan: { networkId: string; network: Network } } }>;
@@ -38,6 +47,8 @@ export default function CorrectActionPage() {
   const [networks, setNetworks] = useState<Network[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [objectives, setObjectives] = useState<Objective[]>([]);
+  const [formConfig, setFormConfig] = useState<FormConfig>({});
+  const [networkDetails, setNetworkDetails] = useState<Record<string, Record<string, string | boolean>>>({});
   const [selectedNetworks, setSelectedNetworks] = useState<string[]>([]);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const [selectedObjectives, setSelectedObjectives] = useState<string[]>([]);
@@ -50,12 +61,13 @@ export default function CorrectActionPage() {
       fetch('/api/networks'),
       fetch('/api/structure/groups'),
       fetch('/api/plans/available-objectives'),
-    ]).then(async ([actionResponse, networksResponse, groupsResponse, objectivesResponse]) => {
+      fetch('/api/actions/form-config'),
+    ]).then(async ([actionResponse, networksResponse, groupsResponse, objectivesResponse, configResponse]) => {
       if (actionResponse.status === 401) {
         router.push('/login');
         return;
       }
-      if (!actionResponse.ok || !networksResponse.ok || !groupsResponse.ok || !objectivesResponse.ok) {
+      if (!actionResponse.ok || !networksResponse.ok || !groupsResponse.ok || !objectivesResponse.ok || !configResponse.ok) {
         setMessage('No se pudo cargar la actuación.');
         return;
       }
@@ -64,6 +76,8 @@ export default function CorrectActionPage() {
       setNetworks(await networksResponse.json());
       setGroups(await groupsResponse.json());
       setObjectives(await objectivesResponse.json());
+      setFormConfig(await configResponse.json());
+      setNetworkDetails(loadedAction.networkDetails || {});
       setSelectedNetworks(loadedAction.networks.map((item) => item.network.id));
       setSelectedGroups(loadedAction.groups.map((item) => item.teachingGroup.id));
       setSelectedObjectives(loadedAction.objectives.map((item) => item.objective.id));
@@ -99,6 +113,11 @@ export default function CorrectActionPage() {
         objectiveIds: selectedObjectives.filter((id) =>
           objectives.some((objective) => objective.id === id && selectedNetworks.includes(objective.plan.networkId)),
         ),
+        networkDetails: Object.fromEntries(
+          networks
+            .filter((network) => selectedNetworks.includes(network.id))
+            .map((network) => [network.code, networkDetails[network.code] || {}]),
+        ),
       }),
     });
     const body = await response.json().catch(() => ({}));
@@ -109,6 +128,36 @@ export default function CorrectActionPage() {
     }
     router.push('/actuaciones/mis-actuaciones');
     router.refresh();
+  }
+
+  function toggleNetwork(id: string) {
+    const network = networks.find((item) => item.id === id);
+    setSelectedNetworks((current) => {
+      if (!current.includes(id)) return [...current, id];
+      if (network) {
+        setNetworkDetails((details) => {
+          const next = { ...details };
+          delete next[network.code];
+          return next;
+        });
+      }
+      setSelectedObjectives((items) => items.filter((objectiveId) =>
+        objectives.some((objective) => objective.id === objectiveId && objective.plan.networkId !== id),
+      ));
+      return current.filter((item) => item !== id);
+    });
+  }
+
+  function setNetworkDetail(code: string, key: string, value: string | boolean | undefined) {
+    setNetworkDetails((current) => {
+      const next = { ...current, [code]: { ...(current[code] || {}) } };
+      if (value === undefined || value === '') {
+        delete next[code][key];
+      } else {
+        next[code][key] = value;
+      }
+      return next;
+    });
   }
 
   if (!action) return <main className="formShell"><p>{message || 'Cargando actuación…'}</p></main>;
@@ -183,15 +232,78 @@ export default function CorrectActionPage() {
                 <input
                   type="checkbox"
                   checked={selectedNetworks.includes(network.id)}
-                  onChange={() => setSelectedNetworks((current) => current.includes(network.id)
-                    ? current.filter((item) => item !== network.id)
-                    : [...current, network.id])}
+                  onChange={() => toggleNetwork(network.id)}
                 />
                 <span>{network.name}</span>
               </label>
             ))}
           </div>
         </fieldset>
+
+        {selectedNetworks.length > 0 && (
+          <fieldset>
+            <legend>Datos útiles para la red <span className="hint">(opcional)</span></legend>
+            <p className="hint">Corrige solo lo necesario. Estos campos alimentan indicadores y memoria sin pedir una segunda ficha.</p>
+            <div className="networkDetailGrid">
+              {networks.filter((network) => selectedNetworks.includes(network.id)).map((network) => {
+                const fields = formConfig[network.code] || [];
+                if (!fields.length) return null;
+                return (
+                  <div className="networkDetailCard" key={network.id}>
+                    <h3>{network.name}</h3>
+                    {fields.map((field) => {
+                      const current = networkDetails[network.code]?.[field.key];
+                      if (field.type === 'boolean') {
+                        return (
+                          <label key={field.key}>{field.label}
+                            <select
+                              value={current === true ? 'true' : current === false ? 'false' : ''}
+                              onChange={(event) => setNetworkDetail(
+                                network.code,
+                                field.key,
+                                event.target.value === '' ? undefined : event.target.value === 'true',
+                              )}
+                            >
+                              <option value="">No indicado</option>
+                              <option value="true">Sí</option>
+                              <option value="false">No</option>
+                            </select>
+                            {field.help && <span className="hint">{field.help}</span>}
+                          </label>
+                        );
+                      }
+                      if (field.type === 'select') {
+                        return (
+                          <label key={field.key}>{field.label}
+                            <select
+                              value={typeof current === 'string' ? current : ''}
+                              onChange={(event) => setNetworkDetail(network.code, field.key, event.target.value || undefined)}
+                            >
+                              <option value="">No indicado</option>
+                              {field.options?.map((option) => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                              ))}
+                            </select>
+                            {field.help && <span className="hint">{field.help}</span>}
+                          </label>
+                        );
+                      }
+                      return (
+                        <label key={field.key}>{field.label}
+                          <input
+                            value={typeof current === 'string' ? current : ''}
+                            onChange={(event) => setNetworkDetail(network.code, field.key, event.target.value || undefined)}
+                          />
+                          {field.help && <span className="hint">{field.help}</span>}
+                        </label>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          </fieldset>
+        )}
 
         {selectedNetworks.length > 0 && (
           <fieldset>
