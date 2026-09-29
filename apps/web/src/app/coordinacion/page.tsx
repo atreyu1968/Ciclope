@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 type DashboardData = {
@@ -9,6 +9,14 @@ type DashboardData = {
   pendingActions: number;
   validatedWithoutEvidence: number;
   overduePlanTasks: number;
+  priorityPlanTasks: Array<{
+    id: string;
+    title: string;
+    dueDate?: string | null;
+    official: boolean;
+    status: string;
+    plan: { network: { id: string; name: string } };
+  }>;
   openStaffRequests: number;
   returnedOwnActions: number;
   unreadCommunications: number;
@@ -43,20 +51,51 @@ export default function CoordinationDashboardPage() {
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState('');
+  const [taskMessage, setTaskMessage] = useState('');
+  const [taskError, setTaskError] = useState('');
+  const [taskBusy, setTaskBusy] = useState('');
+
+  const loadDashboard = useCallback(async () => {
+    const response = await fetch('/api/dashboard/me');
+    if (response.status === 401) {
+      router.push('/login');
+      return;
+    }
+    if (!response.ok) {
+      setError('No se pudo cargar el panel.');
+      return;
+    }
+    setError('');
+    setData(await response.json());
+  }, [router]);
 
   useEffect(() => {
-    fetch('/api/dashboard/me').then(async (response) => {
-      if (response.status === 401) {
-        router.push('/login');
-        return;
-      }
-      if (!response.ok) {
-        setError('No se pudo cargar el panel.');
-        return;
-      }
-      setData(await response.json());
-    });
-  }, [router]);
+    void loadDashboard();
+  }, [loadDashboard]);
+
+  async function updatePlanTask(taskId: string, action: 'done' | 'postpone') {
+    setTaskBusy(taskId + ':' + action);
+    setTaskMessage('');
+    setTaskError('');
+    const response = await fetch(
+      action === 'done' ? '/api/plans/task/' + taskId + '/status' : '/api/plans/task/' + taskId + '/postpone',
+      {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(action === 'done' ? { status: 'DONE' } : { days: 7 }),
+      },
+    );
+    const body = await response.json().catch(() => ({}));
+    setTaskBusy('');
+    if (!response.ok) {
+      setTaskError(
+        Array.isArray(body.message) ? body.message.join(' ') : body.message || 'No se pudo actualizar la tarea.',
+      );
+      return;
+    }
+    setTaskMessage(action === 'done' ? 'Tarea marcada como hecha.' : 'Tarea pospuesta siete días.');
+    await loadDashboard();
+  }
 
   if (error) return <main className="shell"><div className="errorBox">{error}</div></main>;
   if (!data) return <main className="shell"><p>Cargando panel…</p></main>;
@@ -128,6 +167,60 @@ export default function CoordinationDashboardPage() {
           </div>
         )}
       </section>
+
+      {taskMessage && <div className="notice">{taskMessage}</div>}
+      {taskError && <div className="errorBox">{taskError}</div>}
+
+      {data.priorityPlanTasks.length > 0 && (
+        <section className="panel">
+          <div className="panelHeader">
+            <div>
+              <p className="eyebrow">Acciones rápidas</p>
+              <h2>Tareas próximas del plan</h2>
+            </div>
+            <a className="textButton" href="/coordinacion/planes">Abrir planificación completa</a>
+          </div>
+          <div className="assignmentList">
+            {data.priorityPlanTasks.map((task) => {
+              const overdue = Boolean(task.dueDate && new Date(task.dueDate) < new Date());
+              return (
+                <div className="assignmentRow" key={task.id}>
+                  <div>
+                    <strong>{task.title}</strong>
+                    <span>
+                      {task.plan.network.name}
+                      {task.dueDate ? ' · ' + new Date(task.dueDate).toLocaleDateString('es-ES') : ' · sin fecha'}
+                      {task.official ? ' · hito oficial' : ''}
+                    </span>
+                  </div>
+                  <div className="rowActions">
+                    {overdue && <span className="badge dangerBadge">Vencida</span>}
+                    <button
+                      className="secondaryButton"
+                      type="button"
+                      disabled={Boolean(taskBusy)}
+                      onClick={() => void updatePlanTask(task.id, 'done')}
+                    >
+                      {taskBusy === task.id + ':done' ? 'Guardando…' : 'Marcar hecha'}
+                    </button>
+                    {!task.official && (
+                      <button
+                        className="textButton"
+                        type="button"
+                        disabled={Boolean(taskBusy)}
+                        onClick={() => void updatePlanTask(task.id, 'postpone')}
+                      >
+                        {taskBusy === task.id + ':postpone' ? 'Posponiendo…' : 'Posponer 7 días'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="reportNote">Los hitos oficiales pueden completarse desde aquí, pero su fecha no se puede desplazar.</p>
+        </section>
+      )}
 
       <section className="statsGrid">
         <article className="statCard"><strong>{data.pendingActions}</strong><span>actuaciones por validar</span></article>
