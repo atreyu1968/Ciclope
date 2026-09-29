@@ -66,6 +66,30 @@ type Summary = {
       linkedValidatedActions: number;
     }>;
   }>;
+  transversalOverview?: {
+    networkCount: number;
+    networksWithActivity: number;
+    networksWithoutActivity: number;
+    plansConfigured: number;
+    averagePlanProgressPercent: number | null;
+    networksWithOverdueTasks: number;
+    rows: Array<{
+      id: string;
+      code: string;
+      name: string;
+      actions: number;
+      participants: number;
+      evidence: number;
+      planConfigured: boolean;
+      planProgressPercent: number | null;
+      objectives: number;
+      measurableObjectives: number;
+      tasksTotal: number;
+      tasksDone: number;
+      tasksPending: number;
+      tasksOverdue: number;
+    }>;
+  } | null;
   byNetwork: Array<{ id: string; name: string; actions: number; participants: number; evidence: number }>;
   byFamily: Array<{ id: string; name: string; actions: number; participants: number }>;
   byType: Array<{ type: string; actions: number; participants: number }>;
@@ -431,6 +455,71 @@ export default function ReportsPage() {
               “Participaciones de alumnado” suma las participaciones declaradas en las actuaciones; no equivale necesariamente a alumnado único.
             </p>
           </section>
+
+          {summary.transversalOverview && (
+            <section className="reportSection">
+              <h2>Informe ejecutivo conjunto de las cuatro redes</h2>
+              <p className="reportNote">
+                Lectura transversal de la actividad y del avance de los planes de las redes autorizadas. Las actuaciones vinculadas a varias redes se contabilizan en cada una de ellas.
+              </p>
+              <section className="reportKpis">
+                <div>
+                  <strong>{summary.transversalOverview.networksWithActivity}/{summary.transversalOverview.networkCount}</strong>
+                  <span>redes con actividad validada</span>
+                </div>
+                <div>
+                  <strong>{summary.transversalOverview.plansConfigured}/{summary.transversalOverview.networkCount}</strong>
+                  <span>planes anuales configurados</span>
+                </div>
+                <div>
+                  <strong>{summary.transversalOverview.averagePlanProgressPercent === null ? '—' : summary.transversalOverview.averagePlanProgressPercent + '%'}</strong>
+                  <span>avance medio de planes medibles</span>
+                </div>
+                <div>
+                  <strong>{summary.transversalOverview.networksWithOverdueTasks}</strong>
+                  <span>redes con tareas vencidas</span>
+                </div>
+              </section>
+              <div className="tableWrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Red</th>
+                      <th>Actuaciones</th>
+                      <th>Participaciones</th>
+                      <th>Evidencias</th>
+                      <th>Avance plan</th>
+                      <th>Tareas</th>
+                      <th>Situación</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {summary.transversalOverview.rows.map((row) => (
+                      <tr key={row.id}>
+                        <td><strong>{row.name}</strong></td>
+                        <td>{row.actions}</td>
+                        <td>{row.participants}</td>
+                        <td>{row.evidence}</td>
+                        <td>{row.planProgressPercent === null ? (row.planConfigured ? 'Sin métricas' : 'Sin plan') : row.planProgressPercent + '%'}</td>
+                        <td>
+                          {row.tasksDone}/{row.tasksTotal} completadas
+                          {row.tasksPending > 0 ? ' · ' + row.tasksPending + ' pendientes' : ''}
+                          {row.tasksOverdue > 0 ? ' · ' + row.tasksOverdue + ' vencidas' : ''}
+                        </td>
+                        <td>
+                          {row.actions === 0
+                            ? <span className="badge warningChip">Sin actividad</span>
+                            : row.tasksOverdue > 0
+                              ? <span className="badge dangerBadge">Requiere atención</span>
+                              : <span className="badge success">En seguimiento</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
 
           {summary.alerts.length > 0 && (
             <section className="reportSection noPrint">
