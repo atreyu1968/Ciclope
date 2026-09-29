@@ -7,6 +7,7 @@ import { AssistantController } from '../src/assistant/assistant.controller';
 import { CommunicationsController } from '../src/communications/communications.controller';
 import { EvidenceController } from '../src/evidence/evidence.controller';
 import { IntegrationsController } from '../src/integrations/integrations.controller';
+import { NetworksController } from '../src/networks/networks.controller';
 import { PlansController } from '../src/plans/plans.controller';
 import { ReportsController } from '../src/reports/reports.controller';
 import { StaffRequestsController } from '../src/staff-requests/staff-requests.controller';
@@ -74,6 +75,11 @@ test('administración de cursos, usuarios e integraciones queda limitada a admin
     rolesOn(IntegrationsController),
     ADMIN_ROLES,
     'Las claves de integraciones deben ser administrativas',
+  );
+  assertSameRoles(
+    rolesOn(NetworksController.prototype.updateInstitutional),
+    ADMIN_ROLES,
+    'La configuración institucional de redes debe ser administrativa',
   );
 });
 
