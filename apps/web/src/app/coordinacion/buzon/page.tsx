@@ -29,23 +29,32 @@ export default function CoordinationStaffInboxPage() {
   const [aiSummary, setAiSummary] = useState('');
   const [aiError, setAiError] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   async function load(status = filter) {
-    const query = status ? `?status=${encodeURIComponent(status)}` : '';
-    const response = await fetch(`/api/staff-requests/coordination${query}`);
-    if (response.status === 401) {
-      router.push('/login');
-      return;
-    }
-    if (response.status === 403) {
-      setError('No tienes una coordinación asignada en el curso activo.');
-      return;
-    }
-    if (!response.ok) {
+    setLoading(true);
+    try {
+      const query = status ? `?status=${encodeURIComponent(status)}` : '';
+      const response = await fetch(`/api/staff-requests/coordination${query}`);
+      if (response.status === 401) {
+        router.push('/login');
+        return;
+      }
+      if (response.status === 403) {
+        setError('No tienes una coordinación asignada en el curso activo.');
+        return;
+      }
+      if (!response.ok) {
+        setError('No se pudo cargar el buzón de coordinación.');
+        return;
+      }
+      setError('');
+      setItems(await response.json());
+    } catch {
       setError('No se pudo cargar el buzón de coordinación.');
-      return;
+    } finally {
+      setLoading(false);
     }
-    setItems(await response.json());
   }
 
   useEffect(() => { void load(); }, []);
@@ -131,6 +140,12 @@ export default function CoordinationStaffInboxPage() {
       </div>
 
       {error && <div className="errorBox">{error}</div>}
+      {loading && !error && (
+        <div className="loadingState" role="status" aria-live="polite">
+          <span className="loadingSpinner" aria-hidden="true" />
+          <strong>Cargando consultas del claustro…</strong>
+        </div>
+      )}
 
       <div className="actionQueue">
         {items.map((item) => (
@@ -156,7 +171,12 @@ export default function CoordinationStaffInboxPage() {
             </div>
           </article>
         ))}
-        {!items.length && !error && <div className="panel"><h2>Sin asuntos pendientes</h2><p className="empty">No hay consultas en esta vista.</p></div>}
+        {!loading && !items.length && !error && (
+          <div className="emptyState">
+            <h2>Sin consultas en esta vista</h2>
+            <p>No hay asuntos que coincidan con el filtro seleccionado. Puedes cambiar de estado para revisar el histórico del buzón.</p>
+          </div>
+        )}
       </div>
     </main>
   );
