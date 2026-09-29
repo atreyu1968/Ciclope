@@ -61,7 +61,7 @@ El dashboard destaca tareas vencidas y actuaciones validadas sin evidencia para 
 
 ## Automatizaciones internas
 
-La API ejecuta un ciclo ligero de automatizaciones sin cron externo ni contenedores. Con SMTP configurado:
+La API ejecuta un ciclo ligero de automatizaciones sin cron externo ni contenedores. Con Resend activado en el panel de administración:
 
 - avisa una sola vez cuando una tarea asignada se aproxima a su fecha límite;
 - avisa una sola vez cuando una tarea asignada queda vencida;
@@ -69,3 +69,33 @@ La API ejecuta un ciclo ligero de automatizaciones sin cron externo ni contenedo
 - emite un único aviso adicional si el plazo vence sin respuesta.
 
 La cola `EmailOutbox` utiliza `dedupeKey` para garantizar idempotencia: un reinicio de la API o una ejecución repetida no duplica el mismo recordatorio.
+
+
+## Integraciones externas
+
+Cada centro dispone de una única configuración de integraciones en `CenterIntegrationSettings`.
+
+### Resend
+
+El correo saliente se procesa mediante la cola `EmailOutbox` y la API HTTP de Resend. No se utiliza SMTP.
+La API Key, el remitente y el estado de activación se administran desde la aplicación.
+Las claves se cifran con AES-256-GCM antes de persistirse y la clave maestra reside exclusivamente en `INTEGRATIONS_ENCRYPTION_KEY` del servidor.
+
+### Inteligencia artificial
+
+El administrador puede configurar un proveedor compatible con Chat Completions mediante:
+
+- nombre del proveedor;
+- URL base;
+- modelo;
+- API Key;
+- activación/desactivación.
+
+La clave se almacena cifrada y nunca se devuelve al cliente.
+Los coordinadores pueden solicitar desde Informes dos operaciones:
+
+1. interpretación técnica de indicadores;
+2. redacción de un borrador formal de memoria.
+
+Antes de enviar información al proveedor se genera un payload agregado que excluye el listado nominal del profesorado.
+El texto producido por IA se presenta como borrador sujeto a revisión humana.
