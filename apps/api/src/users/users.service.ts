@@ -191,6 +191,89 @@ export class UsersService {
     return { success: true, temporaryPassword };
   }
 
+  async previewImport(centerId: string, dto: ImportUsersDto) {
+    const normalizedEmails = dto.rows.map((row) => row.email.toLowerCase().trim());
+    const counts = new Map<string, number>();
+    for (const email of normalizedEmails) counts.set(email, (counts.get(email) || 0) + 1);
+
+    const [existingUsers, existingFamilies] = await Promise.all([
+      this.prisma.user.findMany({
+        where: { centerId, email: { in: [...new Set(normalizedEmails)] } },
+        select: { id: true, email: true, active: true },
+      }),
+      this.prisma.professionalFamily.findMany({
+        where: { centerId },
+        select: { name: true },
+      }),
+    ]);
+
+    const existingByEmail = new Map(existingUsers.map((user) => [user.email.toLowerCase(), user]));
+    const familyNames = new Set(existingFamilies.map((family) => family.name.toLowerCase()));
+    const familiesToCreate = new Set<string>();
+
+    const rows = dto.rows.map((row, index) => {
+      const email = row.email.toLowerCase().trim();
+      const duplicateInFile = (counts.get(email) || 0) > 1;
+      for (const family of row.families ?? []) {
+        const clean = family.trim();
+        if (clean && !familyNames.has(clean.toLowerCase())) familiesToCreate.add(clean);
+      }
+
+      return {
+        row: index + 2,
+        email,
+        name: `${row.lastName.trim()}, ${row.firstName.trim()}`,
+        action: duplicateInFile
+          ? 'ERROR'
+          : existingByEmail.has(email)
+            ? 'UPDATE'
+            : 'CREATE',
+        activeAccountExists: existingByEmail.get(email)?.active ?? null,
+        issues: duplicateInFile ? ['Correo duplicado dentro del archivo.'] : [],
+      };
+    });
+
+    return {
+      rows,
+      summary: {
+        create: rows.filter((row) => row.action === 'CREATE').length,
+        update: rows.filter((row) => row.action === 'UPDATE').length,
+        errors: rows.filter((row) => row.action === 'ERROR').length,
+        familiesToCreate: [...familiesToCreate].sort((a, b) => a.localeCompare(b, 'es')),
+      },
+    };
+  }
+
+  async exportCsv(centerId: string) {
+    const users = await this.prisma.user.findMany({
+      where: { centerId },
+      include: {
+        professionalFamilies: {
+          include: { professionalFamily: true },
+        },
+      },
+      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+    });
+
+    const escape = (value: unknown) => {
+      const text = String(value ?? '');
+      return /[;"\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    };
+
+    const lines = [
+      ['nombre', 'apellidos', 'email', 'turno', 'activo', 'familias'].join(';'),
+      ...users.map((user) => [
+        escape(user.firstName),
+        escape(user.lastName),
+        escape(user.email),
+        escape(user.shift),
+        user.active ? 'sí' : 'no',
+        escape(user.professionalFamilies.map((item) => item.professionalFamily.name).join('|')),
+      ].join(';')),
+    ];
+    return '\uFEFF' + lines.join('\r\n') + '\r\n';
+  }
+
   async importMany(actor: AuthenticatedUser, dto: ImportUsersDto) {
     const professorRole = await this.prisma.role.findUniqueOrThrow({ where: { key: 'PROFESOR_FP' } });
     const result = {
@@ -201,9 +284,24 @@ export class UsersService {
       temporaryCredentials: [] as Array<{ email: string; password: string }>,
     };
 
+    const emailCounts = new Map<string, number>();
+    for (const row of dto.rows) {
+      const normalized = row.email.toLowerCase().trim();
+      emailCounts.set(normalized, (emailCounts.get(normalized) || 0) + 1);
+    }
+
     for (let index = 0; index < dto.rows.length; index += 1) {
       const row = dto.rows[index];
       const email = row.email.toLowerCase().trim();
+
+      if ((emailCounts.get(email) || 0) > 1) {
+        result.errors.push({
+          row: index + 2,
+          email,
+          message: 'Correo duplicado dentro del archivo. No se ha importado esta fila.',
+        });
+        continue;
+      }
 
       try {
         const existing = await this.prisma.user.findFirst({ where: { centerId: actor.centerId, email } });
