@@ -482,6 +482,7 @@ model PlanTask {
   dueDate     DateTime?
   status      PlanTaskStatus @default(TODO)
   official    Boolean        @default(false)
+  officialKey String?
   completedAt DateTime?
   plan        AnnualPlan     @relation(fields: [planId], references: [id], onDelete: Cascade)
   objective   PlanObjective? @relation(fields: [objectiveId], references: [id], onDelete: SetNull)
@@ -489,6 +490,7 @@ model PlanTask {
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
+  @@unique([planId, officialKey])
   @@index([planId, status])
   @@index([ownerId, dueDate])
   @@index([dueDate, status])
