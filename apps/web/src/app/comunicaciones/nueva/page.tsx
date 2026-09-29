@@ -29,6 +29,7 @@ export default function NewCommunicationPage() {
   const [aiError, setAiError] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
   const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
+  const [loadingBase, setLoadingBase] = useState(true);
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -38,9 +39,12 @@ export default function NewCommunicationPage() {
       fetch('/api/structure/families'),
       fetch('/api/communications/mail-status'),
     ]).then(async ([meResponse, networksResponse, familiesResponse, mailResponse]) => {
-      if (meResponse.status === 401) {
+      if (meResponse.status === 401 || networksResponse.status === 401 || familiesResponse.status === 401) {
         router.push('/login');
         return;
+      }
+      if (!meResponse.ok || !networksResponse.ok || !familiesResponse.ok) {
+        throw new Error('No se pudieron cargar los datos necesarios para la comunicación.');
       }
       setMe(await meResponse.json());
       setNetworks(await networksResponse.json());
@@ -49,7 +53,8 @@ export default function NewCommunicationPage() {
         const mail = await mailResponse.json();
         setSmtpConfigured(Boolean(mail.configured));
       }
-    }).catch(() => setMessage('No se pudieron cargar los datos.'));
+    }).catch(() => setMessage('No se pudieron cargar los datos.'))
+      .finally(() => setLoadingBase(false));
   }, [router]);
 
   const availableNetworks = useMemo(() => {
@@ -173,6 +178,15 @@ export default function NewCommunicationPage() {
     setAfternoon(false);
   }
 
+  if (loadingBase) return (
+    <main className="formShell">
+      <div className="loadingState" role="status" aria-live="polite">
+        <span className="loadingSpinner" aria-hidden="true" />
+        <strong>Preparando destinatarios y configuración de correo…</strong>
+      </div>
+    </main>
+  );
+
   return (
     <main className="formShell">
       <div className="pageHeader">
@@ -210,7 +224,7 @@ export default function NewCommunicationPage() {
           />
         </label>
         <div className="rowActions">
-          <button className="secondaryButton" type="button" disabled={aiBusy || aiBrief.trim().length < 3} onClick={() => void generateDraft()}>
+          <button className="secondaryButton" type="button" disabled={aiBusy || sending || aiBrief.trim().length < 3} onClick={() => void generateDraft()}>
             {aiBusy ? 'Generando…' : 'Generar borrador con IA'}
           </button>
         </div>
@@ -220,7 +234,7 @@ export default function NewCommunicationPage() {
             <strong>Borrador generado</strong>
             <pre>{aiDraft}</pre>
             <p className="aiReviewNotice">Texto generado con IA. Comprueba fechas, destinatarios, compromisos y cualquier dato antes de utilizarlo.</p>
-            <button className="primaryButton" type="button" onClick={applyDraft}>Aplicar al formulario</button>
+            <button className="primaryButton" type="button" disabled={sending || aiBusy} onClick={applyDraft}>Aplicar al formulario</button>
           </div>
         )}
       </section>
@@ -303,7 +317,7 @@ export default function NewCommunicationPage() {
           <label>Fecha límite<input type="datetime-local" name="deadline" /></label>
         </fieldset>
 
-        <button className="primaryButton" disabled={sending}>{sending ? 'Publicando…' : 'Publicar comunicación'}</button>
+        <button className="primaryButton" disabled={sending || aiBusy}>{sending ? 'Publicando y subiendo adjuntos…' : 'Publicar comunicación'}</button>
       </form>
     </main>
   );
