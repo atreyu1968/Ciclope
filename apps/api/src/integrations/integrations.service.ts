@@ -40,7 +40,7 @@ export class IntegrationsService {
     };
   }
 
-  async updateResend(centerId: string, dto: UpdateResendDto) {
+  async updateResend(centerId: string, dto: UpdateResendDto, actorId?: string) {
     const current = await this.settings(centerId);
     const apiKeyEncrypted = dto.apiKey?.trim()
       ? this.crypto.encrypt(dto.apiKey.trim())
@@ -50,20 +50,37 @@ export class IntegrationsService {
       throw new BadRequestException('Introduce una API Key de Resend antes de activar el correo.');
     }
 
-    await this.prisma.centerIntegrationSettings.update({
-      where: { centerId },
-      data: {
-        resendEnabled: dto.enabled,
-        resendApiKeyEncrypted: apiKeyEncrypted,
-        resendFromEmail: dto.fromEmail.trim().toLowerCase(),
-        resendFromName: dto.fromName.trim(),
-      },
-    });
+    await this.prisma.$transaction([
+      this.prisma.centerIntegrationSettings.update({
+        where: { centerId },
+        data: {
+          resendEnabled: dto.enabled,
+          resendApiKeyEncrypted: apiKeyEncrypted,
+          resendFromEmail: dto.fromEmail.trim().toLowerCase(),
+          resendFromName: dto.fromName.trim(),
+        },
+      }),
+      this.prisma.auditLog.create({
+        data: {
+          centerId,
+          actorId,
+          action: 'RESEND_SETTINGS_UPDATED',
+          entityType: 'CenterIntegrationSettings',
+          entityId: centerId,
+          details: {
+            enabled: dto.enabled,
+            fromEmail: dto.fromEmail.trim().toLowerCase(),
+            fromName: dto.fromName.trim(),
+            apiKeyChanged: Boolean(dto.apiKey?.trim()),
+          },
+        },
+      }),
+    ]);
 
     return this.publicSettings(centerId);
   }
 
-  async updateAi(centerId: string, dto: UpdateAiDto) {
+  async updateAi(centerId: string, dto: UpdateAiDto, actorId?: string) {
     const current = await this.settings(centerId);
     const apiKeyEncrypted = dto.apiKey?.trim()
       ? this.crypto.encrypt(dto.apiKey.trim())
@@ -73,16 +90,34 @@ export class IntegrationsService {
       throw new BadRequestException('Introduce una API Key de IA antes de activar la integración.');
     }
 
-    await this.prisma.centerIntegrationSettings.update({
-      where: { centerId },
-      data: {
-        aiEnabled: dto.enabled,
-        aiApiKeyEncrypted: apiKeyEncrypted,
-        aiProviderName: dto.providerName.trim(),
-        aiBaseUrl: dto.baseUrl.trim().replace(/\/$/, ''),
-        aiModel: dto.model.trim(),
-      },
-    });
+    await this.prisma.$transaction([
+      this.prisma.centerIntegrationSettings.update({
+        where: { centerId },
+        data: {
+          aiEnabled: dto.enabled,
+          aiApiKeyEncrypted: apiKeyEncrypted,
+          aiProviderName: dto.providerName.trim(),
+          aiBaseUrl: dto.baseUrl.trim().replace(/\/$/, ''),
+          aiModel: dto.model.trim(),
+        },
+      }),
+      this.prisma.auditLog.create({
+        data: {
+          centerId,
+          actorId,
+          action: 'AI_SETTINGS_UPDATED',
+          entityType: 'CenterIntegrationSettings',
+          entityId: centerId,
+          details: {
+            enabled: dto.enabled,
+            providerName: dto.providerName.trim(),
+            baseUrl: dto.baseUrl.trim().replace(/\/$/, ''),
+            model: dto.model.trim(),
+            apiKeyChanged: Boolean(dto.apiKey?.trim()),
+          },
+        },
+      }),
+    ]);
 
     return this.publicSettings(centerId);
   }
