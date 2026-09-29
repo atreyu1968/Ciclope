@@ -512,7 +512,10 @@ export class PlansService implements OnModuleInit {
     if (task.official) {
       throw new BadRequestException('Los hitos oficiales no pueden posponerse desde el panel.');
     }
-    if ([PlanTaskStatus.DONE, PlanTaskStatus.CANCELLED].includes(task.status)) {
+    if (
+      task.status === PlanTaskStatus.DONE ||
+      task.status === PlanTaskStatus.CANCELLED
+    ) {
       throw new BadRequestException('Solo se pueden posponer tareas abiertas.');
     }
 
