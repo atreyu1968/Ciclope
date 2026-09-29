@@ -5,6 +5,7 @@ import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { SessionGuard } from '../auth/session.guard';
 import type { AuthenticatedUser } from '../auth/auth.types';
+import { CONTENT_WRITE_ROLES } from '../auth/role-policy';
 import { AddStaffRequestMessageDto } from './dto/add-staff-request-message.dto';
 import { CreateStaffRequestDto } from './dto/create-staff-request.dto';
 import { UpdateStaffRequestStatusDto } from './dto/update-staff-request-status.dto';
@@ -27,6 +28,7 @@ export class StaffRequestsController {
   constructor(private readonly requests: StaffRequestsService) {}
 
   @Post()
+  @Roles(...CONTENT_WRITE_ROLES)
   create(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateStaffRequestDto) {
     return this.requests.create(user, dto);
   }
@@ -51,6 +53,7 @@ export class StaffRequestsController {
   }
 
   @Post(':id/messages')
+  @Roles(...CONTENT_WRITE_ROLES)
   addMessage(
     @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
