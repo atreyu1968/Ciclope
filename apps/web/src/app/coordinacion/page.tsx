@@ -108,6 +108,7 @@ export default function CoordinationDashboardPage() {
         <a className="secondaryButton" href="/coordinacion/actuaciones">Actuaciones</a>
         <a className="secondaryButton" href="/coordinacion/planes">Planes anuales</a>
         <a className="secondaryButton" href="/coordinacion/comunicaciones">Comunicaciones enviadas</a>
+        <a className="secondaryButton" href="/coordinacion/automatizaciones">Automatizaciones</a>
         <a className="secondaryButton" href="/coordinacion/buzon">Buzón del claustro</a>
         <a className="secondaryButton" href="/comunicaciones/nueva">Publicar comunicación</a>
         <a className="secondaryButton" href="/actuaciones/nueva">Registrar actuación</a>
