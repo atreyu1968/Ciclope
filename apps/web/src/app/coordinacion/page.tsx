@@ -99,7 +99,14 @@ export default function CoordinationDashboardPage() {
   }
 
   if (error) return <main className="shell"><div className="errorBox">{error}</div></main>;
-  if (!data) return <main className="shell"><p>Cargando panel…</p></main>;
+  if (!data) return (
+    <main className="shell">
+      <div className="loadingState" role="status" aria-live="polite">
+        <span className="loadingSpinner" aria-hidden="true" />
+        <strong>Preparando tu hora de coordinación…</strong>
+      </div>
+    </main>
+  );
 
   const progress = Math.min((data.estimatedMinutes / 60) * 100, 100);
 
