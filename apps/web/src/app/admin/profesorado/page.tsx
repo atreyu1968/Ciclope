@@ -150,6 +150,7 @@ export default function FacultyAdminPage() {
           </p>
         </div>
         <div className="rowActions">
+          <a className="secondaryButton" href="/api/users/export.csv">Exportar CSV</a>
           <a className="secondaryButton" href="/admin/profesorado/importar">Importar CSV</a>
           <a className="secondaryButton" href="/admin/estructura">Familias y grupos</a>
           <a className="secondaryButton" href="/admin/cursos">Cursos y coordinaciones</a>
