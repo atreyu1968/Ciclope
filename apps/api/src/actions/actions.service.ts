@@ -70,6 +70,25 @@ export class ActionsService {
     return publicActionNetworkFields();
   }
 
+  private logActionEvent(
+    user: AuthenticatedUser,
+    actionId: string,
+    action: string,
+    details?: Record<string, unknown>,
+  ) {
+    return this.prisma.auditLog.create({
+      data: {
+        centerId: user.centerId,
+        actorId: user.id,
+        action,
+        entityType: 'ACTION',
+        entityId: actionId,
+        details: details ? JSON.parse(JSON.stringify(details)) : undefined,
+      },
+    });
+  }
+
+
   private normalizeNetworkDetails(
     networkCodes: NetworkCode[],
     raw?: Record<string, unknown>,
@@ -325,6 +344,105 @@ export class ActionsService {
     });
   }
 
+  async history(id: string, user: AuthenticatedUser) {
+    await this.assertCanManageAction(id, user);
+    const [action, auditEvents] = await Promise.all([
+      this.prisma.action.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          title: true,
+          status: true,
+          createdAt: true,
+          validatedAt: true,
+          returnedAt: true,
+          returnedReason: true,
+          submittedByName: true,
+          submittedByEmail: true,
+          submittedBy: { select: { id: true, firstName: true, lastName: true, email: true } },
+          validatedBy: { select: { id: true, firstName: true, lastName: true, email: true } },
+          networks: { include: { network: true } },
+        },
+      }),
+      this.prisma.auditLog.findMany({
+        where: {
+          centerId: user.centerId,
+          entityType: 'ACTION',
+          entityId: id,
+        },
+        include: {
+          actor: {
+            select: { id: true, firstName: true, lastName: true, email: true },
+          },
+        },
+        orderBy: { createdAt: 'asc' },
+      }),
+    ]);
+    if (!action) throw new NotFoundException('Actuación no encontrada.');
+
+    const events: Array<{
+      id: string;
+      action: string;
+      createdAt: Date;
+      actor: { id?: string; firstName: string; lastName: string; email: string } | null;
+      details: unknown;
+      synthetic?: boolean;
+    }> = auditEvents.map((event) => ({
+      id: event.id,
+      action: event.action,
+      createdAt: event.createdAt,
+      actor: event.actor,
+      details: event.details,
+    }));
+
+    if (!events.some((event) => event.action === 'ACTION_CREATED')) {
+      events.push({
+        id: `created:${action.id}`,
+        action: 'ACTION_CREATED',
+        createdAt: action.createdAt,
+        actor: action.submittedBy
+          ? {
+              id: action.submittedBy.id,
+              firstName: action.submittedBy.firstName,
+              lastName: action.submittedBy.lastName,
+              email: action.submittedBy.email,
+            }
+          : {
+              firstName: action.submittedByName,
+              lastName: '',
+              email: action.submittedByEmail,
+            },
+        details: { status: 'PENDING_VALIDATION' },
+        synthetic: true,
+      });
+    }
+
+    if (action.returnedAt && !events.some((event) => event.action === 'ACTION_RETURNED')) {
+      events.push({
+        id: `returned:${action.id}`,
+        action: 'ACTION_RETURNED',
+        createdAt: action.returnedAt,
+        actor: action.validatedBy,
+        details: { reason: action.returnedReason },
+        synthetic: true,
+      });
+    }
+
+    if (action.validatedAt && !events.some((event) => event.action === 'ACTION_VALIDATED')) {
+      events.push({
+        id: `validated:${action.id}`,
+        action: 'ACTION_VALIDATED',
+        createdAt: action.validatedAt,
+        actor: action.validatedBy,
+        details: null,
+        synthetic: true,
+      });
+    }
+
+    events.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    return { action, events };
+  }
+
   async resubmit(
     id: string,
     dto: CreateActionDto,
@@ -397,7 +515,7 @@ export class ActionsService {
       throw new BadRequestException('Uno o más objetivos no pertenecen a un plan activo de las redes seleccionadas.');
     }
 
-    return this.prisma.action.update({
+    const updated = await this.prisma.action.update({
       where: { id },
       data: {
         title: dto.title.trim(),
@@ -435,6 +553,13 @@ export class ActionsService {
         objectives: { include: { objective: true } },
       },
     });
+    await this.logActionEvent(
+      user,
+      id,
+      requireReturned ? 'ACTION_RESUBMITTED' : 'ACTION_UPDATED',
+      { status: updated.status },
+    );
+    return updated;
   }
 
   async duplicate(id: string, user: AuthenticatedUser) {
@@ -515,9 +640,12 @@ export class ActionsService {
           submittedBy: { select: { id: true, email: true, firstName: true } },
         },
       });
-      await Promise.all(validated.map((action) =>
-        this.notifyActionStatus(action, 'validated', validatedAt),
-      ));
+      await Promise.all(validated.map(async (action) => {
+        await Promise.all([
+          this.notifyActionStatus(action, 'validated', validatedAt),
+          this.logActionEvent(user, action.id, 'ACTION_VALIDATED', { batch: true }),
+        ]);
+      }));
     }
 
     return { validated: result.count };
@@ -544,7 +672,10 @@ export class ActionsService {
         submittedBy: { select: { id: true, email: true, firstName: true } },
       },
     });
-    await this.notifyActionStatus(updated, 'validated', validatedAt);
+    await Promise.all([
+      this.notifyActionStatus(updated, 'validated', validatedAt),
+      this.logActionEvent(user, id, 'ACTION_VALIDATED'),
+    ]);
     return updated;
   }
 
@@ -570,7 +701,10 @@ export class ActionsService {
         submittedBy: { select: { id: true, email: true, firstName: true } },
       },
     });
-    await this.notifyActionStatus(updated, 'returned', returnedAt, cleanReason);
+    await Promise.all([
+      this.notifyActionStatus(updated, 'returned', returnedAt, cleanReason),
+      this.logActionEvent(user, id, 'ACTION_RETURNED', { reason: cleanReason }),
+    ]);
     return updated;
   }
 }
