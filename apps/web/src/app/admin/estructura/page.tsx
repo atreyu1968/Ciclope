@@ -23,6 +23,7 @@ export default function StructureAdminPage() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [working, setWorking] = useState('');
 
   async function load() {
     setLoading(true);
@@ -52,6 +53,7 @@ export default function StructureAdminPage() {
 
   async function createFamily(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setWorking('family');
     const form = new FormData(event.currentTarget);
     const response = await fetch('/api/structure/families', {
       method: 'POST',
@@ -66,10 +68,12 @@ export default function StructureAdminPage() {
       event.currentTarget.reset();
       await load();
     }
+    setWorking('');
   }
 
   async function createGroup(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setWorking('group');
     const form = new FormData(event.currentTarget);
     const response = await fetch('/api/structure/groups', {
       method: 'POST',
@@ -86,6 +90,7 @@ export default function StructureAdminPage() {
       event.currentTarget.reset();
       await load();
     }
+    setWorking('');
   }
 
   return (
@@ -116,7 +121,9 @@ export default function StructureAdminPage() {
           <form className="compactForm" onSubmit={createFamily}>
             <label>Nombre<input name="name" required /></label>
             <label>Código<input name="code" placeholder="Opcional" /></label>
-            <button className="primaryButton">Crear familia</button>
+            <button className="primaryButton" disabled={Boolean(working)}>
+              {working === 'family' ? 'Creando familia…' : 'Crear familia'}
+            </button>
           </form>
 
           <div className="assignmentList structureList">
@@ -156,7 +163,9 @@ export default function StructureAdminPage() {
               </label>
               <label>N.º de alumnos<input type="number" name="studentCount" min="0" /></label>
             </div>
-            <button className="primaryButton">Crear grupo</button>
+            <button className="primaryButton" disabled={Boolean(working) || families.length === 0}>
+              {working === 'group' ? 'Creando grupo…' : 'Crear grupo'}
+            </button>
           </form>
 
           <div className="assignmentList structureList">
