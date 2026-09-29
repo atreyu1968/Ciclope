@@ -80,6 +80,8 @@ export class SessionGuard implements CanActivate {
       lastName: session.user.lastName,
       roles: [...roleSet],
       academicYearId: activeYear?.id,
+      academicYearName: activeYear?.name,
+      centerName: session.user.center.name,
       coordinatorNetworkIds: session.user.networkCoordinations.map((item) => item.networkId),
       coordinatorNetworkCodes: session.user.networkCoordinations.map((item) => item.network.code),
     };
