@@ -109,6 +109,12 @@ export class PlansService implements OnModuleInit {
     });
   }
 
+  private parseDueDate(value: string) {
+    return /^\d{4}-\d{2}-\d{2}$/.test(value)
+      ? new Date(`${value}T23:59:59.999Z`)
+      : new Date(value);
+  }
+
   private isGlobal(user: AuthenticatedUser) {
     return ['SUPERADMIN', 'ADMIN_CENTRO', 'DIRECCION', 'COORDINADOR_CICLOPE']
       .some((role) => user.roles.includes(role));
@@ -367,7 +373,7 @@ export class PlansService implements OnModuleInit {
     }
 
     const year = await this.assertYear(user, user.academicYearId);
-    const dueDate = new Date(dto.dueDate);
+    const dueDate = this.parseDueDate(dto.dueDate);
     if (Number.isNaN(dueDate.getTime()) || dueDate < year.startsAt || dueDate > year.endsAt) {
       throw new BadRequestException('La fecha del hito debe estar dentro del curso académico.');
     }
@@ -465,7 +471,7 @@ export class PlansService implements OnModuleInit {
         ownerId: dto.ownerId,
         title: dto.title.trim(),
         description: dto.description?.trim() || null,
-        dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
+        dueDate: dto.dueDate ? this.parseDueDate(dto.dueDate) : null,
       },
       include: {
         owner: { select: { id: true, firstName: true, lastName: true, email: true } },
