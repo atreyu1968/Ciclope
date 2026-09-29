@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Res, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Query, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { Roles } from '../auth/roles.decorator';
@@ -6,6 +6,7 @@ import { RolesGuard } from '../auth/roles.guard';
 import { SessionGuard } from '../auth/session.guard';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { ReportsService } from './reports.service';
+import { IntegrationsService } from '../integrations/integrations.service';
 
 const REPORT_ROLES = [
   'SUPERADMIN',
@@ -22,7 +23,10 @@ const REPORT_ROLES = [
 @UseGuards(SessionGuard, RolesGuard)
 @Roles(...REPORT_ROLES)
 export class ReportsController {
-  constructor(private readonly reports: ReportsService) {}
+  constructor(
+    private readonly reports: ReportsService,
+    private readonly integrations: IntegrationsService,
+  ) {}
 
   @Get('summary')
   summary(
@@ -31,6 +35,28 @@ export class ReportsController {
     @Query('networkId') networkId?: string,
   ) {
     return this.reports.summary(user, academicYearId, networkId);
+  }
+
+  @Post('interpret')
+  async interpret(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('academicYearId') academicYearId?: string,
+    @Query('networkId') networkId?: string,
+  ) {
+    const report = await this.reports.summary(user, academicYearId, networkId);
+    const safeReport = {
+      center: report.center,
+      academicYear: report.academicYear,
+      network: report.network,
+      totals: report.totals,
+      planProgress: report.planProgress,
+      byNetwork: report.byNetwork,
+      byFamily: report.byFamily,
+      byType: report.byType,
+      byMonth: report.byMonth,
+      generatedAt: report.generatedAt,
+    };
+    return this.integrations.interpretReport(user.centerId, safeReport);
   }
 
   @Get('actions.csv')
