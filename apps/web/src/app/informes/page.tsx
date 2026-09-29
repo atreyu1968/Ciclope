@@ -94,6 +94,9 @@ export default function ReportsPage() {
   const [aiMode, setAiMode] = useState<'interpretation'|'draft'>('interpretation');
   const [aiError, setAiError] = useState('');
   const [aiLoading, setAiLoading] = useState<'interpretation'|'draft'|''>('');
+  const [snapshotMessage, setSnapshotMessage] = useState('');
+  const [snapshotError, setSnapshotError] = useState('');
+  const [savingSnapshot, setSavingSnapshot] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -123,6 +126,8 @@ export default function ReportsPage() {
     setError('');
     setAiText('');
     setAiError('');
+    setSnapshotMessage('');
+    setSnapshotError('');
     const params = new URLSearchParams({ academicYearId: yearId });
     if (networkId) params.set('networkId', networkId);
     if (fromDate) params.set('from', fromDate);
@@ -180,6 +185,36 @@ export default function ReportsPage() {
     setAiText(body.text || '');
   }
 
+  async function saveSnapshot() {
+    if (!yearId || !summary) return;
+    setSavingSnapshot(true);
+    setSnapshotMessage('');
+    setSnapshotError('');
+
+    const response = await fetch('/api/reports/snapshots', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        academicYearId: yearId,
+        networkId: networkId || undefined,
+        from: fromDate || undefined,
+        to: toDate || undefined,
+        narrative: aiText || undefined,
+      }),
+    });
+    const body = await response.json().catch(() => ({}));
+    setSavingSnapshot(false);
+
+    if (!response.ok) {
+      setSnapshotError(
+        Array.isArray(body.message) ? body.message.join(' ') : body.message || 'No se pudo guardar el corte histórico.',
+      );
+      return;
+    }
+
+    setSnapshotMessage('Corte histórico guardado. Sus cifras ya no cambiarán aunque se registren o validen datos después.');
+  }
+
   return (
     <main className="shell reportShell">
       <div className="pageHeader noPrint">
@@ -189,6 +224,10 @@ export default function ReportsPage() {
           <p className="lead">Las cifras se recalculan a partir de actuaciones validadas, sin transcribir datos.</p>
         </div>
         <div className="rowActions">
+          <button className="secondaryButton" onClick={() => void saveSnapshot()} disabled={savingSnapshot || loading || !summary}>
+            {savingSnapshot ? 'Guardando…' : 'Guardar corte'}
+          </button>
+          <a className="secondaryButton" href="/informes/historico">Histórico</a>
           <button className="secondaryButton" onClick={() => void processWithAi('interpretation')} disabled={Boolean(aiLoading) || loading || !summary}>
             {aiLoading === 'interpretation' ? 'Interpretando…' : 'Interpretar con IA'}
           </button>
@@ -249,6 +288,8 @@ export default function ReportsPage() {
         )}
       </section>
 
+      {snapshotMessage && <div className="notice noPrint">{snapshotMessage}</div>}
+      {snapshotError && <div className="errorBox noPrint">{snapshotError}</div>}
       {error && <div className="errorBox noPrint">{error}</div>}
       {aiError && <div className="errorBox noPrint">{aiError}</div>}
       {loading && <div className="panel noPrint"><p>Generando informe…</p></div>}
