@@ -109,8 +109,8 @@ export default function HistoricalReportsPage() {
         </div>
       </div>
 
-      {message && <div className="notice">{message}</div>}
-      {error && <div className="errorBox">{error}</div>}
+      {message && <div className="notice" role="status" aria-live="polite">{message}</div>}
+      {error && <div className="errorBox" role="alert">{error}</div>}
 
       <section className="panel reportFilters">
         <label>Curso académico
