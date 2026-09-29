@@ -215,14 +215,35 @@ export class IntegrationsService {
           'Interpreta exclusivamente los datos proporcionados.',
           'No inventes causas, porcentajes, participantes ni conclusiones no respaldadas.',
           'Distingue hechos observados de posibles líneas de mejora.',
-          'Devuelve un texto listo para incorporar a una memoria: síntesis, lectura de indicadores, alertas y propuestas de seguimiento.',
+          'Estructura la respuesta en: lectura general, indicadores destacados, alertas y líneas de seguimiento.',
         ].join(' '),
       },
       {
         role: 'user',
-        content: `Interpreta este informe agregado de CÍCLOPE FP:\n\n${JSON.stringify(report)}`,
+        content: `Interpreta estos datos agregados de CÍCLOPE FP:\n\n${JSON.stringify(report)}`,
       },
     ]);
-    return { text: content };
+    return { text: content, mode: 'interpretation' };
+  }
+
+  async draftReport(centerId: string, report: unknown) {
+    const content = await this.aiRequest(centerId, [
+      {
+        role: 'system',
+        content: [
+          'Eres un redactor técnico especializado en memorias institucionales de Formación Profesional.',
+          'Escribe en español de España, con estilo formal, cohesionado y apto para revisión y firma.',
+          'Utiliza exclusivamente los datos proporcionados y no inventes hechos, causas o resultados.',
+          'Cuando un dato no permita concluir causalidad, limita la redacción a describirlo.',
+          'Redacta un borrador con: introducción, actuaciones realizadas, participación, evidencias, evolución temporal, seguimiento de objetivos, aspectos pendientes, valoración técnica y propuestas de mejora.',
+          'Evita lenguaje promocional, exageraciones y repeticiones.',
+        ].join(' '),
+      },
+      {
+        role: 'user',
+        content: `Redacta un borrador de memoria a partir de estos datos agregados de CÍCLOPE FP:\n\n${JSON.stringify(report)}`,
+      },
+    ], 0.3);
+    return { text: content, mode: 'draft' };
   }
 }
