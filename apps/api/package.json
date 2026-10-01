@@ -7,7 +7,8 @@
     "start": "node dist/main.js",
     "start:dev": "nest start --watch",
     "test:unit": "tsx --test test/auth-and-critical-services.test.ts test/permission-matrix.test.ts test/mail-preferences.test.ts test/report-document.test.ts",
-    "test:integration": "tsx --test test/database.integration.test.ts"
+    "test:integration": "tsx --test test/database.integration.test.ts",
+    "test:e2e": "tsx --test test/core-flow.e2e.test.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",
