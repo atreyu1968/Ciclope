@@ -47,15 +47,17 @@ jobs:
         run: npm run test:integration
       - name: Build production artifacts
         run: npm run build
-      - name: Create isolated E2E database
+      - name: Create isolated E2E and volume databases
         run: |
           node <<'NODE'
           const { Client } = require('pg');
           (async () => {
             const client = new Client({ connectionString: 'postgresql://ci:ci@127.0.0.1:5432/postgres' });
             await client.connect();
-            await client.query('DROP DATABASE IF EXISTS ci_e2e');
-            await client.query('CREATE DATABASE ci_e2e');
+            for (const database of ['ci_e2e', 'ci_volume']) {
+              await client.query(`DROP DATABASE IF EXISTS ${database}`);
+              await client.query(`CREATE DATABASE ${database}`);
+            }
             await client.end();
           })().catch((error) => {
             console.error(error);
@@ -72,3 +74,13 @@ jobs:
         env:
           E2E_DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci_e2e
         run: npm run test:e2e
+      - name: Prepare volume database
+        env:
+          DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci_volume
+        run: |
+          npm run db:migrate
+          npm run db:seed
+      - name: Representative full-course volume test
+        env:
+          VOLUME_DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci_volume
+        run: npm run test:volume
