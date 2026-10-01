@@ -6,18 +6,24 @@ if [[ ${EUID} -ne 0 ]]; then
   exit 1
 fi
 
-REPO_URL="https://github.com/atreyu1968/Ciclope.git"
-APP_ROOT="/opt/ciclope-fp"
-CONFIG_ROOT="/etc/ciclope-fp"
-DATA_ROOT="/var/lib/ciclope-fp"
+REPO_URL="${CICLOPE_REPO_URL:-https://github.com/atreyu1968/Ciclope.git}"
+APP_ROOT="${CICLOPE_APP_ROOT:-/opt/ciclope-fp}"
+CONFIG_ROOT="${CICLOPE_CONFIG_ROOT:-/etc/ciclope-fp}"
+DATA_ROOT="${CICLOPE_DATA_ROOT:-/var/lib/ciclope-fp}"
 PUBLIC_URL="${CICLOPE_PUBLIC_URL:-http://localhost}"
 
 apt-get update
-DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl git nginx postgresql postgresql-contrib build-essential openssl
+DEBIAN_FRONTEND=noninteractive apt-get install -y sudo ca-certificates curl git nginx postgresql postgresql-contrib build-essential openssl
 
-if ! command -v node >/dev/null 2>&1 || [[ "$(node -p 'process.versions.node.split(".")[0]')" -lt 24 ]]; then
+# Los servicios systemd ejecutan /usr/bin/npm como usuario ciclope. No basta con
+# que Node exista únicamente en el PATH interactivo de root (p. ej. setup-node/nvm).
+SYSTEM_NODE_MAJOR=0
+if [[ -x /usr/bin/node ]]; then
+  SYSTEM_NODE_MAJOR="$(/usr/bin/node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)"
+fi
+if [[ "$SYSTEM_NODE_MAJOR" -lt 24 || ! -x /usr/bin/npm ]]; then
   curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
-  apt-get install -y nodejs
+  DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs
 fi
 
 if ! id ciclope >/dev/null 2>&1; then
