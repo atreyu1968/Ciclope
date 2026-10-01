@@ -242,7 +242,7 @@
 - [ ] Prueba de instalación limpia en Ubuntu.
 - [ ] Prueba de actualización conservando datos.
 - [ ] Prueba de backup y restauración.
-- [ ] Prueba con datos de volumen razonable de un curso completo.
+- [x] Prueba con datos de volumen razonable de un curso completo.
 - [x] Auditoría de dependencias y vulnerabilidades.
 - [ ] Semáforo final sin errores críticos.
 
