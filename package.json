@@ -19,7 +19,8 @@
     "db:seed": "tsx packages/database/prisma/seed.ts",
     "test:unit": "npm run test:unit --workspace @ciclope/api",
     "test:integration": "npm run test:integration --workspace @ciclope/api",
-    "test:e2e": "npm run test:e2e --workspace @ciclope/api"
+    "test:e2e": "npm run test:e2e --workspace @ciclope/api",
+    "test:volume": "npm run test:volume --workspace @ciclope/api"
   },
   "devDependencies": {
     "prisma": "7.10.0",
