@@ -1,7 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ValidationPipe } from '@nestjs/common';
-import { NestFactory, type INestApplication } from '@nestjs/core';
+import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import { createServer } from 'node:net';
+import { existsSync, readFileSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 type HttpResult<T = any> = {
   status: number;
@@ -9,8 +12,16 @@ type HttpResult<T = any> = {
   setCookie?: string;
 };
 
-let app: INestApplication;
+type ResendRequest = {
+  authorization: string | null;
+  idempotencyKey: string | null;
+  payload: any;
+};
+
+let apiProcess: ChildProcessWithoutNullStreams | undefined;
 let baseUrl = '';
+let processOutput = '';
+let resendLogPath = '';
 
 function cookiePair(setCookie: string | null) {
   if (!setCookie) return '';
@@ -66,14 +77,52 @@ async function login(email: string, password: string) {
   return cookie;
 }
 
-async function waitFor<T>(callback: () => Promise<T | undefined>, timeoutMs = 3000) {
+async function waitFor<T>(callback: () => Promise<T | undefined>, timeoutMs = 5000) {
   const started = Date.now();
   while (Date.now() - started < timeoutMs) {
     const value = await callback();
     if (value !== undefined) return value;
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 75));
   }
   throw new Error(`La condición E2E no se cumplió en ${timeoutMs} ms.`);
+}
+
+async function freePort() {
+  return new Promise<number>((resolve, reject) => {
+    const server = createServer();
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address();
+      if (!address || typeof address === 'string') {
+        server.close(() => reject(new Error('No se pudo reservar un puerto E2E.')));
+        return;
+      }
+      const port = address.port;
+      server.close((error) => error ? reject(error) : resolve(port));
+    });
+  });
+}
+
+function resendRequests(): ResendRequest[] {
+  if (!resendLogPath || !existsSync(resendLogPath)) return [];
+  return readFileSync(resendLogPath, 'utf8')
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as ResendRequest);
+}
+
+async function waitForApi() {
+  await waitFor(async () => {
+    if (apiProcess?.exitCode !== null && apiProcess?.exitCode !== undefined) {
+      throw new Error(`La API E2E terminó antes de arrancar.\n${processOutput}`);
+    }
+    try {
+      const response = await fetch(baseUrl + '/api/health');
+      return response.ok ? true : undefined;
+    } catch {
+      return undefined;
+    }
+  }, 12_000);
 }
 
 test.before(async () => {
@@ -83,27 +132,48 @@ test.before(async () => {
     'E2E_DATABASE_URL es obligatoria. Usa una base PostgreSQL desechable y separada de desarrollo/producción.',
   );
 
-  process.env.NODE_ENV = 'test';
-  process.env.DATABASE_URL = databaseUrl;
-  process.env.COOKIE_SECURE = 'false';
-  process.env.SESSION_COOKIE_NAME = 'ciclope_e2e_session';
+  const port = await freePort();
+  baseUrl = `http://127.0.0.1:${port}`;
+  resendLogPath = join(tmpdir(), `ciclope-e2e-resend-${process.pid}.jsonl`);
+  rmSync(resendLogPath, { force: true });
 
-  const { AppModule } = await import('../src/app.module');
-  app = await NestFactory.create(AppModule, { logger: false, cors: false });
-  app.setGlobalPrefix('api');
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    forbidNonWhitelisted: true,
-    transform: true,
-  }));
+  const preload = './test/resend-fetch-hook.cjs';
+  const nodeOptions = [process.env.NODE_OPTIONS, `--require=${preload}`].filter(Boolean).join(' ');
 
-  await app.listen(0, '127.0.0.1');
-  baseUrl = await app.getUrl();
-  process.env.APP_BASE_URL = baseUrl;
+  apiProcess = spawn(process.execPath, ['dist/main.js'], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      NODE_ENV: 'test',
+      DATABASE_URL: databaseUrl,
+      PORT: String(port),
+      APP_BASE_URL: baseUrl,
+      COOKIE_SECURE: 'false',
+      SESSION_COOKIE_NAME: 'ciclope_e2e_session',
+      SESSION_SECRET: 'ciclope-e2e-session-secret-2026',
+      INTEGRATIONS_ENCRYPTION_KEY: 'ciclope-e2e-integrations-secret-2026',
+      E2E_RESEND_LOG: resendLogPath,
+      NODE_OPTIONS: nodeOptions,
+    },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+
+  apiProcess.stdout.on('data', (chunk) => { processOutput += chunk.toString(); });
+  apiProcess.stderr.on('data', (chunk) => { processOutput += chunk.toString(); });
+
+  await waitForApi();
 });
 
 test.after(async () => {
-  await app?.close();
+  if (apiProcess && apiProcess.exitCode === null) {
+    apiProcess.kill('SIGTERM');
+    await Promise.race([
+      new Promise<void>((resolve) => apiProcess?.once('exit', () => resolve())),
+      new Promise<void>((resolve) => setTimeout(resolve, 2000)),
+    ]);
+    if (apiProcess.exitCode === null) apiProcess.kill('SIGKILL');
+  }
+  rmSync(resendLogPath, { force: true });
 });
 
 test('E2E de los flujos esenciales de CÍCLOPE', async (t) => {
@@ -198,10 +268,7 @@ test('E2E de los flujos esenciales de CÍCLOPE', async (t) => {
 
     const validated = await api<{ id: string; status: string; validatedAt?: string | null }>(
       `/api/actions/${created.body.id}/validate`,
-      {
-        method: 'PATCH',
-        cookie: sessionCookie,
-      },
+      { method: 'PATCH', cookie: sessionCookie },
     );
     assert.equal(validated.status, 200);
     assert.equal(validated.body.status, 'VALIDATED');
@@ -236,10 +303,7 @@ test('E2E de los flujos esenciales de CÍCLOPE', async (t) => {
     assert.equal(report.body.totals.teachers, 1);
     assert.equal(report.body.totals.studentParticipations, 18);
     assert.equal(report.body.totals.totalHours, 0.9);
-    assert.equal(
-      report.body.byNetwork.find((item) => item.id === innovation.id)?.actions,
-      1,
-    );
+    assert.equal(report.body.byNetwork.find((item) => item.id === innovation.id)?.actions, 1);
   });
 
   await t.test('comunicación → cola → Resend simulado → lectura/respuesta', async () => {
@@ -262,128 +326,94 @@ test('E2E de los flujos esenciales de CÍCLOPE', async (t) => {
     assert.equal(configured.body.resend.enabled, true);
     assert.equal(configured.body.resend.configured, true);
 
-    const nativeFetch = globalThis.fetch;
-    const resendRequests: Array<{
-      authorization: string | null;
-      idempotencyKey: string | null;
-      payload: any;
-    }> = [];
+    const resendTest = await api<{ ok: boolean }>('/api/integrations/resend/test', {
+      method: 'POST',
+      cookie: sessionCookie,
+    });
+    assert.equal(resendTest.status, 201);
+    assert.equal(resendTest.body.ok, true);
 
-    globalThis.fetch = async (input: string | URL | Request, init?: RequestInit) => {
-      const url = typeof input === 'string'
-        ? input
-        : input instanceof URL
-          ? input.toString()
-          : input.url;
+    const communication = await api<{
+      id: string;
+      _count: { recipients: number };
+      emailDelivery: { queued: number; configured: boolean };
+      resendConfigured: boolean;
+    }>('/api/communications', {
+      method: 'POST',
+      cookie: sessionCookie,
+      body: {
+        originNetworkId: innovationId,
+        title: 'Comunicación E2E',
+        body: 'Mensaje de prueba del flujo de comunicaciones y entrega por Resend simulado.',
+        responseRequired: true,
+        targetAllFp: true,
+      },
+    });
 
-      if (url === 'https://api.resend.com/emails') {
-        const headers = new Headers(init?.headers);
-        resendRequests.push({
-          authorization: headers.get('authorization'),
-          idempotencyKey: headers.get('Idempotency-Key'),
-          payload: init?.body ? JSON.parse(String(init.body)) : null,
-        });
-        return new Response(JSON.stringify({ id: `mock-email-${resendRequests.length}` }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        });
-      }
+    assert.equal(communication.status, 201);
+    assert.equal(communication.body._count.recipients, 1);
+    assert.equal(communication.body.emailDelivery.queued, 1);
+    assert.equal(communication.body.emailDelivery.configured, true);
+    assert.equal(communication.body.resendConfigured, true);
 
-      return nativeFetch(input as any, init);
-    };
-
-    try {
-      const resendTest = await api<{ ok: boolean }>('/api/integrations/resend/test', {
-        method: 'POST',
-        cookie: sessionCookie,
-      });
-      assert.equal(resendTest.status, 201);
-      assert.equal(resendTest.body.ok, true);
-
-      const communication = await api<{
+    const sentJob = await waitFor(async () => {
+      const jobs = await api<Array<{
         id: string;
-        title: string;
-        responseRequired: boolean;
-        _count: { recipients: number };
-        emailDelivery: { queued: number; configured: boolean };
-        resendConfigured: boolean;
-      }>('/api/communications', {
+        communicationId?: string | null;
+        status: string;
+        attempts: number;
+        recipientEmail: string;
+      }>>('/api/communications/mail-jobs', { cookie: sessionCookie });
+      assert.equal(jobs.status, 200);
+      return jobs.body.find((job) =>
+        job.communicationId === communication.body.id && job.status === 'SENT',
+      );
+    });
+
+    assert.equal(sentJob.recipientEmail, email);
+    assert.equal(sentJob.attempts, 1);
+
+    const requests = await waitFor(async () => {
+      const rows = resendRequests();
+      return rows.length >= 2 ? rows : undefined;
+    });
+    const communicationRequest = requests.find((request) =>
+      request.payload?.subject === '[Innovación] Comunicación E2E',
+    );
+    assert.ok(communicationRequest, 'La comunicación debe llegar al transporte Resend simulado.');
+    assert.equal(communicationRequest.authorization, 'Bearer re_e2e_mock_key');
+    assert.ok(communicationRequest.idempotencyKey);
+    assert.deepEqual(communicationRequest.payload.to, [email]);
+    assert.match(communicationRequest.payload.html, /CÍCLOPE FP/);
+    assert.match(communicationRequest.payload.text, /Mensaje de prueba/);
+
+    const inbox = await api<Array<{
+      readAt?: string | null;
+      communication: { id: string; title: string };
+    }>>('/api/communications/inbox', { cookie: sessionCookie });
+    assert.equal(inbox.status, 200);
+    const inboxItem = inbox.body.find((item) => item.communication.id === communication.body.id);
+    assert.ok(inboxItem);
+    assert.equal(inboxItem.readAt, null);
+
+    const read = await api<{ readAt?: string | null }>(`/api/communications/${communication.body.id}/read`, {
+      method: 'PATCH',
+      cookie: sessionCookie,
+    });
+    assert.equal(read.status, 200);
+    assert.ok(read.body.readAt);
+
+    const responded = await api<{ respondedAt?: string | null; responseText?: string | null }>(
+      `/api/communications/${communication.body.id}/respond`,
+      {
         method: 'POST',
         cookie: sessionCookie,
-        body: {
-          originNetworkId: innovationId,
-          title: 'Comunicación E2E',
-          body: 'Mensaje de prueba del flujo de comunicaciones y entrega por Resend simulado.',
-          responseRequired: true,
-          targetAllFp: true,
-        },
-      });
-
-      assert.equal(communication.status, 201);
-      assert.equal(communication.body._count.recipients, 1);
-      assert.equal(communication.body.emailDelivery.queued, 1);
-      assert.equal(communication.body.emailDelivery.configured, true);
-      assert.equal(communication.body.resendConfigured, true);
-
-      const sentJob = await waitFor(async () => {
-        const jobs = await api<Array<{
-          id: string;
-          communicationId?: string | null;
-          status: string;
-          attempts: number;
-          recipientEmail: string;
-        }>>('/api/communications/mail-jobs', { cookie: sessionCookie });
-        assert.equal(jobs.status, 200);
-        return jobs.body.find((job) =>
-          job.communicationId === communication.body.id && job.status === 'SENT',
-        );
-      });
-
-      assert.equal(sentJob.recipientEmail, email);
-      assert.equal(sentJob.attempts, 1);
-      assert.ok(resendRequests.length >= 2, 'Debe existir una prueba de Resend y un envío de comunicación.');
-
-      const communicationRequest = resendRequests.find((request) =>
-        request.payload?.subject === '[Innovación] Comunicación E2E',
-      );
-      assert.ok(communicationRequest, 'La comunicación debe llegar al transporte Resend simulado.');
-      assert.equal(communicationRequest.authorization, 'Bearer re_e2e_mock_key');
-      assert.ok(communicationRequest.idempotencyKey);
-      assert.deepEqual(communicationRequest.payload.to, [email]);
-      assert.match(communicationRequest.payload.html, /CÍCLOPE FP/);
-      assert.match(communicationRequest.payload.text, /Mensaje de prueba/);
-
-      const inbox = await api<Array<{
-        readAt?: string | null;
-        respondedAt?: string | null;
-        communication: { id: string; title: string };
-      }>>('/api/communications/inbox', { cookie: sessionCookie });
-      assert.equal(inbox.status, 200);
-      const inboxItem = inbox.body.find((item) => item.communication.id === communication.body.id);
-      assert.ok(inboxItem);
-      assert.equal(inboxItem.readAt, null);
-
-      const read = await api<{ readAt?: string | null }>(`/api/communications/${communication.body.id}/read`, {
-        method: 'PATCH',
-        cookie: sessionCookie,
-      });
-      assert.equal(read.status, 200);
-      assert.ok(read.body.readAt);
-
-      const responded = await api<{ respondedAt?: string | null; responseText?: string | null }>(
-        `/api/communications/${communication.body.id}/respond`,
-        {
-          method: 'POST',
-          cookie: sessionCookie,
-          body: { response: 'Recibido y confirmado desde E2E.' },
-        },
-      );
-      assert.equal(responded.status, 201);
-      assert.ok(responded.body.respondedAt);
-      assert.equal(responded.body.responseText, 'Recibido y confirmado desde E2E.');
-    } finally {
-      globalThis.fetch = nativeFetch;
-    }
+        body: { response: 'Recibido y confirmado desde E2E.' },
+      },
+    );
+    assert.equal(responded.status, 201);
+    assert.ok(responded.body.respondedAt);
+    assert.equal(responded.body.responseText, 'Recibido y confirmado desde E2E.');
   });
 
   await t.test('cierre de curso → rollover → activación del curso siguiente', async () => {
@@ -400,11 +430,7 @@ test('E2E de los flujos esenciales de CÍCLOPE', async (t) => {
       }>(`/api/academic-years/${currentYearId}/network-coordinators`, {
         method: 'POST',
         cookie: sessionCookie,
-        body: {
-          userId: adminUserId,
-          networkId: network.id,
-          isPrimary: true,
-        },
+        body: { userId: adminUserId, networkId: network.id, isPrimary: true },
       });
       assert.equal(assigned.status, 201);
       assert.equal(assigned.body.network.id, network.id);
