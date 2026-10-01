@@ -110,7 +110,10 @@ test('E2E de los flujos esenciales de CÍCLOPE', async (t) => {
   const email = 'admin-e2e@example.test';
   const password = 'CiclopeE2E2026';
   let sessionCookie = '';
+  let adminUserId = '';
+  let currentYearId = '';
   let innovationId = '';
+  let networksCache: Array<{ id: string; code: string; name: string }> = [];
 
   await t.test('configuración inicial → login → actuación → validación → informe', async () => {
     const initialStatus = await api<{ initialized: boolean }>('/api/setup/status');
@@ -136,6 +139,7 @@ test('E2E de los flujos esenciales de CÍCLOPE', async (t) => {
     assert.equal(initialized.body.center.code, 'E2E-CICLOPE');
     assert.equal(initialized.body.user.email, email);
     assert.ok(initialized.body.user.roles.includes('SUPERADMIN'));
+    adminUserId = initialized.body.user.id;
 
     const setupCookie = cookiePair(initialized.setCookie || null);
     assert.ok(setupCookie, 'La configuración inicial debe crear una sesión autenticada.');
@@ -158,11 +162,13 @@ test('E2E de los flujos esenciales de CÍCLOPE', async (t) => {
     assert.equal(me.body.email, email);
     assert.ok(me.body.academicYearId, 'Debe existir un curso académico activo tras el seed E2E.');
     assert.ok(me.body.roles.includes('ADMIN_CENTRO'));
+    currentYearId = me.body.academicYearId!;
 
     const networks = await api<Array<{ id: string; code: string; name: string }>>('/api/networks', {
       cookie: sessionCookie,
     });
     assert.equal(networks.status, 200);
+    networksCache = networks.body;
     const innovation = networks.body.find((network) => network.code === 'INNOVATION');
     assert.ok(innovation, 'La red de Innovación debe estar disponible.');
     innovationId = innovation.id;
@@ -378,5 +384,122 @@ test('E2E de los flujos esenciales de CÍCLOPE', async (t) => {
     } finally {
       globalThis.fetch = nativeFetch;
     }
+  });
+
+  await t.test('cierre de curso → rollover → activación del curso siguiente', async () => {
+    if (!sessionCookie) sessionCookie = await login(email, password);
+    assert.ok(adminUserId);
+    assert.ok(currentYearId);
+    assert.equal(networksCache.length, 4);
+
+    for (const network of networksCache) {
+      const assigned = await api<{
+        id: string;
+        network: { id: string };
+        user: { id: string };
+      }>(`/api/academic-years/${currentYearId}/network-coordinators`, {
+        method: 'POST',
+        cookie: sessionCookie,
+        body: {
+          userId: adminUserId,
+          networkId: network.id,
+          isPrimary: true,
+        },
+      });
+      assert.equal(assigned.status, 201);
+      assert.equal(assigned.body.network.id, network.id);
+      assert.equal(assigned.body.user.id, adminUserId);
+    }
+
+    const ciclope = await api<{ id: string; user: { id: string } }>(
+      `/api/academic-years/${currentYearId}/ciclope-coordinators`,
+      {
+        method: 'POST',
+        cookie: sessionCookie,
+        body: { userId: adminUserId, isPrimary: true },
+      },
+    );
+    assert.equal(ciclope.status, 201);
+    assert.equal(ciclope.body.user.id, adminUserId);
+
+    const closeCheck = await api<{
+      canClose: boolean;
+      blockers: { pendingActions: number; draftCommunications: number };
+    }>(`/api/academic-years/${currentYearId}/close-check`, { cookie: sessionCookie });
+    assert.equal(closeCheck.status, 200);
+    assert.equal(closeCheck.body.canClose, true);
+    assert.deepEqual(closeCheck.body.blockers, { pendingActions: 0, draftCommunications: 0 });
+
+    const closed = await api<{ id: string; isActive: boolean; closedAt?: string | null }>(
+      `/api/academic-years/${currentYearId}/close`,
+      { method: 'PATCH', cookie: sessionCookie },
+    );
+    assert.equal(closed.status, 200);
+    assert.equal(closed.body.isActive, false);
+    assert.ok(closed.body.closedAt);
+
+    const rolled = await api<{ id: string; name: string; isActive: boolean }>(
+      `/api/academic-years/${currentYearId}/rollover`,
+      {
+        method: 'POST',
+        cookie: sessionCookie,
+        body: {
+          name: '2027-2028',
+          startsAt: '2027-09-01T00:00:00.000Z',
+          endsAt: '2028-06-30T23:59:59.000Z',
+          copyGroups: true,
+          copyCoordinators: true,
+        },
+      },
+    );
+    assert.equal(rolled.status, 201);
+    assert.equal(rolled.body.name, '2027-2028');
+    assert.equal(rolled.body.isActive, false);
+
+    const readiness = await api<{
+      ready: boolean;
+      missingNetworks: string[];
+      missingCiclope: boolean;
+    }>(`/api/academic-years/${rolled.body.id}/activation-readiness`, { cookie: sessionCookie });
+    assert.equal(readiness.status, 200);
+    assert.equal(readiness.body.ready, true);
+    assert.deepEqual(readiness.body.missingNetworks, []);
+    assert.equal(readiness.body.missingCiclope, false);
+
+    const activated = await api<{ id: string; name: string; isActive: boolean }>(
+      `/api/academic-years/${rolled.body.id}/activate`,
+      { method: 'PATCH', cookie: sessionCookie },
+    );
+    assert.equal(activated.status, 200);
+    assert.equal(activated.body.isActive, true);
+
+    const meAfterRollover = await api<{
+      academicYearId?: string | null;
+      academicYearName?: string | null;
+    }>('/api/auth/me', { cookie: sessionCookie });
+    assert.equal(meAfterRollover.status, 200);
+    assert.equal(meAfterRollover.body.academicYearId, rolled.body.id);
+    assert.equal(meAfterRollover.body.academicYearName, '2027-2028');
+
+    const years = await api<Array<{
+      id: string;
+      name: string;
+      isActive: boolean;
+      closedAt?: string | null;
+      _count: { actions: number; communications: number; groups: number };
+      networkCoordinators: Array<{ id: string }>;
+      ciclopeCoordinators: Array<{ id: string }>;
+    }>>('/api/academic-years', { cookie: sessionCookie });
+    assert.equal(years.status, 200);
+
+    const oldYear = years.body.find((year) => year.id === currentYearId);
+    const newYear = years.body.find((year) => year.id === rolled.body.id);
+    assert.ok(oldYear?.closedAt);
+    assert.equal(oldYear?.isActive, false);
+    assert.equal(newYear?.isActive, true);
+    assert.equal(newYear?._count.actions, 0);
+    assert.equal(newYear?._count.communications, 0);
+    assert.equal(newYear?.networkCoordinators.length, 4);
+    assert.equal(newYear?.ciclopeCoordinators.length, 1);
   });
 });
