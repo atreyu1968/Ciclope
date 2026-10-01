@@ -11,6 +11,7 @@ APP_ROOT="${CICLOPE_APP_ROOT:-/opt/ciclope-fp}"
 CONFIG_ROOT="${CICLOPE_CONFIG_ROOT:-/etc/ciclope-fp}"
 DATA_ROOT="${CICLOPE_DATA_ROOT:-/var/lib/ciclope-fp}"
 PUBLIC_URL="${CICLOPE_PUBLIC_URL:-http://localhost}"
+SYSTEM_PATH="/usr/bin:/bin"
 
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y sudo ca-certificates curl git nginx postgresql postgresql-contrib build-essential openssl
@@ -24,6 +25,12 @@ fi
 if [[ "$SYSTEM_NODE_MAJOR" -lt 24 || ! -x /usr/bin/npm ]]; then
   curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
   DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs
+fi
+
+SYSTEM_NODE_VERSION="$(/usr/bin/node --version)"
+if [[ "$SYSTEM_NODE_VERSION" != v24.* ]]; then
+  echo "Se esperaba Node.js 24 en /usr/bin/node y se encontró $SYSTEM_NODE_VERSION." >&2
+  exit 1
 fi
 
 # En instalaciones mínimas (incluidos algunos VPS y runners de CI) apt puede
@@ -94,14 +101,14 @@ chmod 640 "$CONFIG_ROOT/ciclope.env"
 chown root:ciclope "$CONFIG_ROOT/ciclope.env"
 
 cd "$APP_ROOT/current"
-sudo -u ciclope npm install
+sudo -u ciclope env PATH="$SYSTEM_PATH" /usr/bin/npm install
 set -a
 source "$CONFIG_ROOT/ciclope.env"
 set +a
-sudo -u ciclope -E npm run db:generate
-sudo -u ciclope -E npm run db:migrate
-sudo -u ciclope -E npm run db:seed
-sudo -u ciclope -E npm run build
+sudo -u ciclope -E env PATH="$SYSTEM_PATH" /usr/bin/npm run db:generate
+sudo -u ciclope -E env PATH="$SYSTEM_PATH" /usr/bin/npm run db:migrate
+sudo -u ciclope -E env PATH="$SYSTEM_PATH" /usr/bin/npm run db:seed
+sudo -u ciclope -E env PATH="$SYSTEM_PATH" /usr/bin/npm run build
 
 cp deploy/systemd/ciclope-api.service /etc/systemd/system/
 cp deploy/systemd/ciclope-web.service /etc/systemd/system/
@@ -126,6 +133,7 @@ done
 
 echo
 echo "CÍCLOPE FP instalado."
+echo "Node.js:  $SYSTEM_NODE_VERSION"
 echo "Frontend: http://IP_DEL_SERVIDOR/"
 echo "API:      http://IP_DEL_SERVIDOR/api/health"
 echo "Configuración: $CONFIG_ROOT/ciclope.env"
