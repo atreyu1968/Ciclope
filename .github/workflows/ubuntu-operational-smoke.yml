@@ -1,0 +1,106 @@
+name: Ubuntu operational smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/**'
+      - 'deploy/**'
+      - '.github/workflows/ubuntu-operational-smoke.yml'
+
+jobs:
+  ubuntu-native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate shell syntax
+        run: bash -n scripts/*.sh
+
+      - name: Clean native installation
+        run: |
+          sudo env \
+            CICLOPE_PUBLIC_URL=http://127.0.0.1 \
+            CICLOPE_REPO_URL=https://github.com/atreyu1968/Ciclope.git \
+            bash scripts/install-ubuntu.sh
+
+      - name: Verify services, API, web and Nginx
+        run: |
+          sudo bash /opt/ciclope-fp/current/scripts/healthcheck.sh
+          curl --fail --silent --show-error http://127.0.0.1/api/health | grep -q '"status":"ok"'
+          curl --fail --silent --show-error http://127.0.0.1/ >/dev/null
+          sudo systemctl --no-pager --full status ciclope-api ciclope-web nginx postgresql
+
+      - name: Create persistence markers before update
+        run: |
+          sudo bash -c '
+            set -a
+            source /etc/ciclope-fp/ciclope.env
+            set +a
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "UPDATE \"Center\" SET \"name\" = '\''UPDATE_PRESERVE'\'' WHERE \"code\" = '\''CONFIGURAR'\'';"
+            printf "%s\n" "UPLOAD_BEFORE_UPDATE" > /var/lib/ciclope-fp/uploads/operational-marker.txt
+            chown ciclope:ciclope /var/lib/ciclope-fp/uploads/operational-marker.txt
+          '
+
+      - name: Update installation without losing data
+        run: |
+          OLD_RELEASE="$(readlink -f /opt/ciclope-fp/current)"
+          sudo env CICLOPE_KEEP_RELEASES=3 bash /opt/ciclope-fp/current/scripts/update-ubuntu.sh
+          NEW_RELEASE="$(readlink -f /opt/ciclope-fp/current)"
+          test -n "$NEW_RELEASE"
+          test "$NEW_RELEASE" != "$OLD_RELEASE"
+          sudo bash /opt/ciclope-fp/current/scripts/healthcheck.sh
+          sudo bash -c '
+            set -a
+            source /etc/ciclope-fp/ciclope.env
+            set +a
+            test "$(psql "$DATABASE_URL" -Atc "SELECT \"name\" FROM \"Center\" WHERE \"code\"='\''CONFIGURAR'\'';")" = "UPDATE_PRESERVE"
+            test "$(cat /var/lib/ciclope-fp/uploads/operational-marker.txt)" = "UPLOAD_BEFORE_UPDATE"
+          '
+
+      - name: Create backup snapshot
+        run: |
+          sudo bash -c '
+            set -a
+            source /etc/ciclope-fp/ciclope.env
+            set +a
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "UPDATE \"Center\" SET \"name\" = '\''BACKUP_SNAPSHOT'\'' WHERE \"code\" = '\''CONFIGURAR'\'';"
+            printf "%s\n" "UPLOAD_BACKUP_SNAPSHOT" > /var/lib/ciclope-fp/uploads/operational-marker.txt
+            chown ciclope:ciclope /var/lib/ciclope-fp/uploads/operational-marker.txt
+          '
+          sudo bash /opt/ciclope-fp/current/scripts/backup.sh
+          BACKUP_DIR="$(sudo find /var/lib/ciclope-fp/backups -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)"
+          test -n "$BACKUP_DIR"
+          test -s "$BACKUP_DIR/database.dump"
+          test -s "$BACKUP_DIR/uploads.tar.gz"
+          echo "BACKUP_DIR=$BACKUP_DIR" >> "$GITHUB_ENV"
+
+      - name: Mutate data after backup
+        run: |
+          sudo bash -c '
+            set -a
+            source /etc/ciclope-fp/ciclope.env
+            set +a
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "UPDATE \"Center\" SET \"name\" = '\''MUTATED_AFTER_BACKUP'\'' WHERE \"code\" = '\''CONFIGURAR'\'';"
+            printf "%s\n" "UPLOAD_MUTATED" > /var/lib/ciclope-fp/uploads/operational-marker.txt
+          '
+
+      - name: Restore backup and verify database plus uploads
+        run: |
+          sudo bash /opt/ciclope-fp/current/scripts/restore.sh "$BACKUP_DIR"
+          sudo bash /opt/ciclope-fp/current/scripts/healthcheck.sh
+          sudo bash -c '
+            set -a
+            source /etc/ciclope-fp/ciclope.env
+            set +a
+            test "$(psql "$DATABASE_URL" -Atc "SELECT \"name\" FROM \"Center\" WHERE \"code\"='\''CONFIGURAR'\'';")" = "BACKUP_SNAPSHOT"
+            test "$(cat /var/lib/ciclope-fp/uploads/operational-marker.txt)" = "UPLOAD_BACKUP_SNAPSHOT"
+          '
+
+      - name: Final service diagnostics
+        if: always()
+        run: |
+          sudo systemctl --no-pager --full status ciclope-api ciclope-web nginx postgresql || true
+          sudo journalctl -u ciclope-api -u ciclope-web --no-pager -n 120 || true
