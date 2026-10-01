@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-API_URL="${CICLOPE_API_HEALTH_URL:-http://127.0.0.1:4000/health}"
+API_URL="${CICLOPE_API_HEALTH_URL:-http://127.0.0.1:4000/api/health}"
 WEB_URL="${CICLOPE_WEB_HEALTH_URL:-http://127.0.0.1:3000/}"
 
 for service in ciclope-api ciclope-web nginx postgresql; do
