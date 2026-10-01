@@ -26,6 +26,15 @@ if [[ "$SYSTEM_NODE_MAJOR" -lt 24 || ! -x /usr/bin/npm ]]; then
   DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs
 fi
 
+# En instalaciones mínimas (incluidos algunos VPS y runners de CI) apt puede
+# instalar PostgreSQL y Nginx sin arrancarlos. PostgreSQL debe estar disponible
+# antes de crear el rol/base de CÍCLOPE.
+systemctl enable --now postgresql
+if ! systemctl is-active --quiet postgresql; then
+  echo "PostgreSQL no ha podido arrancar tras la instalación." >&2
+  exit 1
+fi
+
 if ! id ciclope >/dev/null 2>&1; then
   useradd --system --create-home --home-dir /var/lib/ciclope-fp --shell /usr/sbin/nologin ciclope
 fi
@@ -103,7 +112,17 @@ rm -f /etc/nginx/sites-enabled/default
 systemctl daemon-reload
 systemctl enable --now ciclope-api ciclope-web
 nginx -t
+systemctl enable --now nginx
 systemctl reload nginx
+
+# Validación inmediata del estado de los cuatro servicios fundamentales.
+for service in ciclope-api ciclope-web nginx postgresql; do
+  systemctl is-active --quiet "$service" || {
+    echo "La instalación terminó, pero el servicio $service no está activo." >&2
+    systemctl --no-pager --full status "$service" || true
+    exit 1
+  }
+done
 
 echo
 echo "CÍCLOPE FP instalado."
