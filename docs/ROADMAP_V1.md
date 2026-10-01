@@ -228,7 +228,7 @@
 - [x] Confirmaciones para operaciones destructivas.
 - [x] Revisión responsive completa.
 - [x] Revisión de accesibilidad por teclado, etiquetas y contraste.
-- [ ] Unificar mensajes de error y éxito.
+- [x] Unificar mensajes de error y éxito.
 
 ## 15. Calidad y pruebas
 
@@ -236,9 +236,9 @@
 - [x] Tests unitarios de servicios críticos.
 - [x] Tests de autorización por rol.
 - [x] Tests de integración API + PostgreSQL.
-- [ ] Tests E2E: configuración inicial → login → actuación → validación → informe.
-- [ ] Tests E2E de comunicaciones/Resend con transporte simulado.
-- [ ] Tests E2E de cierre/apertura de curso.
+- [x] Tests E2E: configuración inicial → login → actuación → validación → informe.
+- [x] Tests E2E de comunicaciones/Resend con transporte simulado.
+- [x] Tests E2E de cierre/apertura de curso.
 - [ ] Prueba de instalación limpia en Ubuntu.
 - [ ] Prueba de actualización conservando datos.
 - [ ] Prueba de backup y restauración.
