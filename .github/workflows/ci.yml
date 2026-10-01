@@ -45,6 +45,8 @@ jobs:
         run: npm run test:unit
       - name: PostgreSQL integration tests
         run: npm run test:integration
+      - name: Build production artifacts
+        run: npm run build
       - name: Create isolated E2E database
         run: |
           node <<'NODE'
@@ -66,9 +68,7 @@ jobs:
         run: |
           npm run db:migrate
           npm run db:seed
-      - name: Core HTTP E2E flow
+      - name: Core HTTP E2E flow against compiled API
         env:
           E2E_DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci_e2e
         run: npm run test:e2e
-      - name: Build
-        run: npm run build
